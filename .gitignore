@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Secrets and local config
+.env
+.env.*
+!.env.example
+
+# Model caches / generated vector data
+.cache/
+.huggingface/
+models/
+data/processed/**
+data/index/**
+!data/processed/.gitkeep
+!data/index/.gitkeep
+
+# Local logs and OS files
+*.log
+.DS_Store
+Thumbs.db

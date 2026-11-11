@@ -1,0 +1,7 @@
+/* Main widget styles are injected by widget.js so the demo can be embedded with one script tag.
+   Keep this file for future host-site overrides and theme variables. */
+:root {
+  --psa-primary: #173b70;
+  --psa-surface: #ffffff;
+  --psa-text: #202536;
+}

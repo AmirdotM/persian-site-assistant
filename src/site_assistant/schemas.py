@@ -1,0 +1,21 @@
+"""Pydantic schemas define the public HTTP API contract."""
+
+from pydantic import BaseModel, Field, HttpUrl
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=4000)
+    session_id: str | None = Field(default=None, max_length=128)
+
+
+class SourceReference(BaseModel):
+    source_id: str
+    title: str
+    url: HttpUrl | None = None
+    excerpt: str | None = None
+
+
+class ChatResponse(BaseModel):
+    answer: str
+    sources: list[SourceReference] = Field(default_factory=list)
+    request_id: str | None = None
