@@ -1,7 +1,7 @@
 """In-memory NumPy vector search for a small demo index."""
 
-from dataclasses import dataclass
 from collections.abc import Sequence
+from dataclasses import dataclass
 
 import numpy as np
 

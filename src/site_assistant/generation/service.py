@@ -16,7 +16,9 @@ class ChatService:
         hits = self.retriever.search(question)
         if not hits:
             return ChatResponse(
-                answer="متأسفم، اطلاعات کافی برای پاسخ به این پرسش در منابع فعلی ندارم. لطفاً با پشتیبانی شرکت تماس بگیرید."
+                answer=
+                "متأسفم، اطلاعات کافی برای پاسخ به این پرسش در منابع فعلی ندارم." \
+                " لطفاً با پشتیبانی شرکت تماس بگیرید."
             )
         answer = await self.llm.generate(
             system_prompt=SYSTEM_PROMPT_FA,
