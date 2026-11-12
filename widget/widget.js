@@ -1,110 +1,227 @@
-/* Standalone Persian chat widget. No API secrets belong in this file. */
+/* Persian RAG chat widget. Safe to embed with one script tag; no API secrets belong here. */
 (() => {
   const script = document.currentScript;
-  const apiBase = (script?.dataset.apiUrl || "").replace(/\/$/, "");
-  const chatUrl = `${apiBase}/api/v1/chat`;
+  if (document.getElementById("psa-chat-launcher")) return;
 
-  const styles = `
-    .psa-launcher { position:fixed; right:22px; bottom:22px; z-index:99999; border:0; border-radius:999px; padding:14px 20px; background:#173b70; color:#fff; font:600 14px Tahoma,Arial,sans-serif; cursor:pointer; box-shadow:0 8px 28px #10254435; }
-    .psa-panel { position:fixed; right:22px; bottom:84px; z-index:99999; width:min(360px,calc(100vw - 32px)); height:480px; max-height:calc(100vh - 120px); display:none; flex-direction:column; overflow:hidden; border:1px solid #dce2eb; border-radius:18px; background:#fff; box-shadow:0 16px 50px #10254430; font-family:Tahoma,Arial,sans-serif; direction:rtl; }
-    .psa-panel.psa-open { display:flex; }
-    .psa-header { display:flex; justify-content:space-between; align-items:center; padding:14px 16px; background:#173b70; color:#fff; }
-    .psa-header button { border:0; background:transparent; color:#fff; font-size:20px; cursor:pointer; }
-    .psa-messages { flex:1; overflow:auto; padding:14px; background:#f7f9fc; }
-    .psa-message { max-width:88%; margin:0 0 10px; padding:10px 12px; border-radius:12px; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.8; font-size:13px; }
-    .psa-user { margin-right:auto; background:#dceafe; }
-    .psa-assistant { margin-left:auto; background:#fff; border:1px solid #e5eaf1; }
-    .psa-sources { margin:2px 0 12px; font-size:11px; }
-    .psa-sources a { color:#174b91; display:block; margin-top:4px; }
-    .psa-form { display:flex; gap:8px; padding:12px; border-top:1px solid #e6eaf0; }
-    .psa-form input { min-width:0; flex:1; border:1px solid #d7deea; border-radius:10px; padding:10px; font:13px Tahoma,Arial,sans-serif; direction:rtl; }
-    .psa-form button { border:0; border-radius:10px; padding:0 14px; background:#173b70; color:white; cursor:pointer; }
-    .psa-form button:disabled { opacity:.5; cursor:wait; }
-  `;
-  const style = document.createElement("style");
-  style.textContent = styles;
-  document.head.appendChild(style);
+  const apiBase = (script && script.dataset.apiUrl ? script.dataset.apiUrl : "http://127.0.0.1:8000").replace(/\/$/, "");
+  const chatUrl = apiBase + "/api/v1/chat";
+
+  // Load the widget stylesheet relative to this script, so the embed stays portable.
+  if (script && script.src) {
+    const stylesheetUrl = new URL("./widget.css", script.src).href;
+    const alreadyLoaded = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+      .some((link) => link.href === stylesheetUrl);
+    if (!alreadyLoaded) {
+      const stylesheet = document.createElement("link");
+      stylesheet.rel = "stylesheet";
+      stylesheet.href = stylesheetUrl;
+      document.head.appendChild(stylesheet);
+    }
+  }
 
   const launcher = document.createElement("button");
+  launcher.id = "psa-chat-launcher";
   launcher.className = "psa-launcher";
   launcher.type = "button";
-  launcher.textContent = "گفت‌وگو با ما";
   launcher.setAttribute("aria-expanded", "false");
+  launcher.setAttribute("aria-controls", "psa-chat-panel");
+  launcher.innerHTML = '<span class="psa-launcher-mark" aria-hidden="true">ر</span><span class="psa-launcher-copy">گفت‌وگو با ما<small>دستیار راهکار نوین آریا</small></span>';
 
   const panel = document.createElement("section");
+  panel.id = "psa-chat-panel";
   panel.className = "psa-panel";
-  panel.setAttribute("aria-label", "دستیار هوشمند وب‌سایت");
-  panel.innerHTML = `
-    <div class="psa-header"><strong>دستیار هوشمند</strong><button type="button" aria-label="بستن">×</button></div>
-    <div class="psa-messages" aria-live="polite"><div class="psa-message psa-assistant">سلام! درباره خدمات مجموعه چه سؤالی دارید؟</div></div>
-    <form class="psa-form"><input name="message" maxlength="1000" placeholder="سؤال خود را بنویسید…" autocomplete="off" required><button type="submit">ارسال</button></form>
-  `;
+  panel.hidden = true;
+  panel.setAttribute("role", "dialog");
+  panel.setAttribute("aria-modal", "false");
+  panel.setAttribute("aria-label", "دستیار هوشمند راهکار نوین آریا");
+  panel.innerHTML = [
+    '<div class="psa-header">',
+      '<div class="psa-header-brand">',
+        '<span class="psa-header-mark" aria-hidden="true">ر</span>',
+        '<span class="psa-header-title"><strong>دستیار راهکار نوین آریا</strong><small><i class="psa-status-dot"></i> پاسخ‌گویی بر پایه اسناد</small></span>',
+      '</div>',
+      '<button class="psa-close" type="button" aria-label="بستن گفت‌وگو">×</button>',
+    '</div>',
+    '<div class="psa-intro"><strong>سلام، خوش آمدید.</strong><p>درباره خدمات، فرایند همکاری یا سناریوهای نمایشی سؤال کنید. پاسخ‌ها بر اساس اطلاعات موجود در اسناد هستند.</p></div>',
+    '<div class="psa-messages" aria-live="polite" aria-relevant="additions text"></div>',
+    '<div class="psa-form-wrap">',
+      '<form class="psa-form">',
+        '<input name="message" maxlength="4000" placeholder="سؤال خود را بنویسید…" autocomplete="off" aria-label="متن پرسش" required>',
+        '<button class="psa-send" type="submit" aria-label="ارسال پرسش">←</button>',
+      '</form>',
+      '<div class="psa-footnote">نسخه نمایشی · اطلاعات حساس ارسال نکنید</div>',
+    '</div>'
+  ].join("");
   document.body.append(launcher, panel);
 
   const messages = panel.querySelector(".psa-messages");
-  const form = panel.querySelector("form");
+  const form = panel.querySelector(".psa-form");
   const input = form.querySelector("input");
   const sendButton = form.querySelector("button");
 
-  function addMessage(text, kind) {
+  function addMessage(text, kind, extraClass) {
     const item = document.createElement("div");
-    item.className = `psa-message ${kind === "user" ? "psa-user" : "psa-assistant"}`;
+    item.className = "psa-message " + (kind === "user" ? "psa-user" : "psa-assistant");
+    if (extraClass) item.classList.add(extraClass);
     item.textContent = text;
     messages.appendChild(item);
     messages.scrollTop = messages.scrollHeight;
     return item;
   }
 
-  launcher.addEventListener("click", () => {
-    const isOpen = panel.classList.toggle("psa-open");
-    launcher.setAttribute("aria-expanded", String(isOpen));
-    if (isOpen) input.focus();
-  });
-  panel.querySelector(".psa-header button").addEventListener("click", () => {
-    panel.classList.remove("psa-open");
+  function addSuggestions() {
+    const wrap = document.createElement("div");
+    wrap.className = "psa-suggestions";
+    [
+      "چه خدماتی ارائه می‌دهید؟",
+      "هزینه پروژه چگونه مشخص می‌شود؟",
+      "این نمونه‌کارها واقعی هستند؟"
+    ].forEach((question) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "psa-suggestion";
+      button.textContent = question;
+      button.addEventListener("click", () => {
+        input.value = question;
+        form.requestSubmit();
+      });
+      wrap.appendChild(button);
+    });
+    messages.appendChild(wrap);
+  }
+
+  function openPanel() {
+    panel.hidden = false;
+    launcher.setAttribute("aria-expanded", "true");
+    input.focus();
+  }
+
+  function closePanel() {
+    panel.hidden = true;
     launcher.setAttribute("aria-expanded", "false");
+    launcher.focus();
+  }
+
+  function appendSources(sources) {
+    if (!Array.isArray(sources) || sources.length === 0) return;
+
+    const list = document.createElement("div");
+    list.className = "psa-sources";
+    const label = document.createElement("div");
+    label.className = "psa-sources-label";
+    label.textContent = "منابع پاسخ";
+    list.appendChild(label);
+
+    sources.slice(0, 5).forEach((source) => {
+      if (!source || typeof source !== "object") return;
+
+      let card;
+      let safeUrl = null;
+      if (typeof source.url === "string" && source.url.trim()) {
+        try {
+          const parsedUrl = new URL(source.url, window.location.href);
+          if (parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:") safeUrl = parsedUrl.href;
+        } catch (_) {
+          safeUrl = null;
+        }
+      }
+
+      card = document.createElement(safeUrl ? "a" : "div");
+      card.className = "psa-source";
+      if (safeUrl) {
+        card.href = safeUrl;
+        card.target = "_blank";
+        card.rel = "noopener noreferrer";
+      }
+
+      const title = document.createElement("span");
+      title.className = "psa-source-title";
+      title.textContent = typeof source.title === "string" && source.title ? source.title : "سند مرتبط";
+      card.appendChild(title);
+
+      if (typeof source.excerpt === "string" && source.excerpt.trim()) {
+        const excerpt = document.createElement("span");
+        excerpt.className = "psa-source-excerpt";
+        excerpt.textContent = source.excerpt;
+        card.appendChild(excerpt);
+      }
+
+      if (typeof source.source_id === "string" && source.source_id) {
+        const tag = document.createElement("span");
+        tag.className = "psa-source-tag";
+        tag.textContent = "شناسه منبع: " + source.source_id;
+        card.appendChild(tag);
+      }
+      list.appendChild(card);
+    });
+
+    if (list.children.length > 1) messages.appendChild(list);
+  }
+
+  async function readResponse(response) {
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      const body = await response.text();
+      throw new Error(response.ok ? "پاسخ سرور در قالب JSON نبود." : "سرور پاسخ قابل پردازش ارسال نکرد.");
+    }
+    return response.json();
+  }
+
+  launcher.addEventListener("click", () => {
+    if (panel.hidden) openPanel();
+    else closePanel();
+  });
+  panel.querySelector(".psa-close").addEventListener("click", closePanel);
+  window.addEventListener("psa:open", openPanel);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !panel.hidden) closePanel();
   });
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const message = input.value.trim();
-    if (!message) return;
+    if (!message || sendButton.disabled) return;
+
     addMessage(message, "user");
     input.value = "";
+    input.disabled = true;
     sendButton.disabled = true;
-    const pending = addMessage("در حال بررسی…", "assistant");
+    const pending = addMessage("در حال جست‌وجو در اسناد…", "assistant", "psa-pending");
+    pending.setAttribute("aria-busy", "true");
 
     try {
       const response = await fetch(chatUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message })
       });
-      const data = await response.json();
+      const data = await readResponse(response);
+
       if (!response.ok) {
-        throw new Error(data.detail || `خطای سرور (${response.status})`);
+        const detail = data && typeof data.detail === "string" ? data.detail : "در حال حاضر امکان پاسخ‌گویی وجود ندارد.";
+        throw new Error(detail);
       }
-      pending.textContent = data.answer || "پاسخی دریافت نشد.";
-      if (Array.isArray(data.sources) && data.sources.length) {
-        const sources = document.createElement("div");
-        sources.className = "psa-sources";
-        data.sources.forEach((source) => {
-          if (!source.url) return;
-          const link = document.createElement("a");
-          link.href = source.url;
-          link.target = "_blank";
-          link.rel = "noopener noreferrer";
-          link.textContent = `منبع: ${source.title}`;
-          sources.appendChild(link);
-        });
-        pending.appendChild(sources);
+      if (!data || typeof data.answer !== "string" || !data.answer.trim()) {
+        throw new Error("پاسخی از سرویس دریافت نشد.");
       }
+
+      pending.textContent = data.answer;
+      pending.classList.remove("psa-pending");
+      pending.removeAttribute("aria-busy");
+      appendSources(data.sources);
     } catch (error) {
-      pending.textContent = `فعلاً امکان دریافت پاسخ وجود ندارد. ${error.message}`;
+      pending.textContent = "متأسفیم؛ دریافت پاسخ با مشکل روبه‌رو شد. " +
+        (error && error.message ? error.message : "اتصال به سرویس برقرار نشد.");
+      pending.classList.remove("psa-pending");
+      pending.removeAttribute("aria-busy");
     } finally {
+      input.disabled = false;
       sendButton.disabled = false;
       input.focus();
       messages.scrollTop = messages.scrollHeight;
     }
   });
+
+  addMessage("می‌توانم درباره خدمات، روند اجرای پروژه و نمونه‌های نمایشی راهنمایی کنم.", "assistant");
+  addSuggestions();
 })();
