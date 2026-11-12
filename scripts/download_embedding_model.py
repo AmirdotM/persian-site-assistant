@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -11,6 +12,10 @@ MODEL_DIR = PROJECT_ROOT / "models" / "multilingual-e5-small"
 
 # Only the PyTorch/Sentence Transformers files needed by this project.
 # In particular, do not download the duplicate pytorch_model.bin or ONNX exports.
+# Slow connections may need longer than Hugging Face's 10-second default.
+os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "60")
+os.environ.setdefault("HF_HUB_ETAG_TIMEOUT", "30")
+
 MODEL_FILES = [
     "config.json",
     "model.safetensors",
