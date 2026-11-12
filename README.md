@@ -54,6 +54,7 @@ Browser widget → FastAPI → query embedding → retrieval
 │   └── assets/
 ├── widget/                      # Embeddable chat widget and isolated demo
 ├── scripts/build_index.py       # Offline index-building entry point
+├── scripts/download_embedding_model.py
 ├── src/site_assistant/
 │   ├── api/
 │   ├── generation/
@@ -74,7 +75,7 @@ Create and activate a virtual environment:
 
 ```powershell
 py -3.12 -m venv .venv
-.\.venv\Scripts\Activate.ps1
+.\\.venv\\Scripts\\Activate.ps1
 python -m pip install --upgrade pip
 Copy-Item .env.example .env
 ```
@@ -102,11 +103,25 @@ python -c "import torch; print(torch.__version__); print(torch.cuda.is_available
 
 For a CPU installation, `torch.cuda.is_available()` should be `False`. For NVIDIA GPU inference, use the matching command from the official [PyTorch installation selector](https://pytorch.org/get-started/locally/) instead of the CPU index.
 
-The embedding model weights are downloaded the first time the embedder loads the configured model.
+Download the model files into the project-local `models/multilingual-e5-small/` directory:
+
+```powershell
+python scripts/download_embedding_model.py
+```
+
+The downloader fetches only the files needed by Sentence Transformers and skips duplicate PyTorch/ONNX exports. It uses Hugging Face's `snapshot_download` with a local destination. If the connection fails, run the same command again after reconnecting.
+
+Set the local model path in `.env`:
+
+```ini
+EMBEDDING_MODEL=./models/multilingual-e5-small
+```
+
+The `models/` directory is ignored by Git; do not commit model weights.
 
 ### Build the local index
 
-Run from the repository root after installing the embedding dependencies:
+Run from the repository root after installing the embedding dependencies and downloading the model:
 
 ```powershell
 python scripts/build_index.py
@@ -157,7 +172,7 @@ Uvicorn is installed without its optional `standard` extras. The current widget 
 |---|---|---|
 | `dev` | pytest, pytest-cov, Ruff | Tests and linting |
 | `vector` | NumPy | Vector search and index persistence |
-| `embeddings` | NumPy, Sentence Transformers | E5 model inference |
+| `embeddings` | NumPy, Sentence Transformers, Hugging Face Hub | E5 model download and inference |
 
 The GitHub Actions test job installs `.[dev,vector]`. It does not install Sentence Transformers, PyTorch, CUDA libraries, or model weights. Index-builder tests use a fake embedder.
 
@@ -179,14 +194,14 @@ The GitHub Actions test job installs `.[dev,vector]`. It does not install Senten
 | `LLM_API_KEY` | Provider API key |
 | `LLM_BASE_URL` | OpenAI-compatible API base URL |
 | `LLM_MODEL` | Provider model identifier |
-| `EMBEDDING_MODEL` | Embedding model |
+| `EMBEDDING_MODEL` | Embedding model or local model directory |
 | `EMBEDDING_DEVICE` | Embedding device (`cpu` by default) |
 | `RETRIEVAL_TOP_K` | Number of retrieved passages |
 | `RETRIEVAL_MIN_SCORE` | Minimum retrieval score |
 | `CHUNK_SIZE_CHARS` | Maximum chunk length |
 | `CHUNK_OVERLAP_CHARS` | Chunk overlap |
 
-Keep credentials in `.env` or deployment secrets. Do not commit secrets, private source documents, model files, or generated indexes.
+Keep credentials in `.env` or the hosting provider's secret store. Do not commit secrets, private source documents, model files, or generated indexes.
 
 ## Development checks
 
