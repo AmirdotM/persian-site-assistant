@@ -19,10 +19,17 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-rag = [
+# Lightweight vector operations and persistence.
+vector = [
     "numpy>=1.26",
+]
+
+# Heavy model-inference dependencies. Install CPU-only PyTorch separately first
+# when running on CPU; see the README setup instructions.
+embeddings = [
     "sentence-transformers>=3.0",
 ]
+
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
