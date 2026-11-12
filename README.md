@@ -20,7 +20,7 @@ Website widget → FastAPI → Persian normalization → E5 embeddings
 
 ## Stack
 
-- Python 3.12, FastAPI, Pydantic
+- Python 3.12, FastAPI, Uvicorn, Pydantic
 - OpenAI-compatible LLM API
 - `intfloat/multilingual-e5-small` embeddings
 - NumPy similarity search and persistence
@@ -109,6 +109,8 @@ python -m http.server 5500
 ```
 
 Demo page: `http://127.0.0.1:5500/widget/demo.html`
+
+Uvicorn is installed without its optional `standard` extras. The current demo uses HTTP requests only and has no WebSocket endpoints, so the extra WebSocket server dependency is unnecessary. Uvicorn's built-in HTTP server is sufficient for local development.
 
 ## Dependency groups
 
