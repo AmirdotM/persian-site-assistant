@@ -39,6 +39,8 @@ Current defaults: CPU embeddings, top-k 4, minimum retrieval score 0.35, 900-cha
 - E5 passage and query embedding support.
 - NumPy cosine-similarity search and a retriever with a minimum-score threshold.
 - Vector-store `save()`, class-based `load()`, format versioning, and matrix/chunk validation.
+- `scripts/build_index.py` now calls the existing `build_chunks()` pipeline, embeds chunk text, validates vector/chunk alignment, and saves `data/index/vector_store.npz` plus `data/index/vector_store.json`.
+- Model-free tests verify that the index builder writes both files, that the saved store reloads correctly, and that empty corpora or mismatched embedding counts fail clearly.
 - Persian generation prompt, hosted LLM client, and a chat service that returns source references.
 - FastAPI health and chat routes.
 - Basic RTL widget. The current JavaScript already sends `POST /api/v1/chat` and renders answers/source links; live end-to-end verification remains.
@@ -55,10 +57,9 @@ Current defaults: CPU embeddings, top-k 4, minimum retrieval score 0.35, 900-cha
 
 ## Current priority
 
-1. Fix vector-store tests and keep the dependency groups light; verify CI.
-2. Complete `scripts/build_index.py` and generate a local index.
-3. Initialize the embedder, store, retriever, LLM client, and chat service during FastAPI startup.
-4. Verify the complete API path, then test the already-wired widget against it.
+1. Run the corrected index-builder tests and Ruff in CI; then generate a real local index using the configured E5 model.
+2. Initialize the embedder, saved vector store, retriever, LLM client, and chat service during FastAPI startup.
+3. Verify the complete API path, then test the already-wired widget against it.
 5. Add retrieval evaluation, minimal safeguards, deployment or a recorded fallback, and final documentation/demo rehearsal.
 
 See `IMPLEMENTATION_PLAN.md` for detailed tasks and acceptance criteria.
