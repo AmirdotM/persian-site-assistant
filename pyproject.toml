@@ -29,6 +29,7 @@ vector = [
 embeddings = [
     "numpy>=1.26",
     "sentence-transformers>=3.0",
+    "huggingface-hub>=0.20",
 ]
 
 dev = [
