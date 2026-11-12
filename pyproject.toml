@@ -27,6 +27,7 @@ vector = [
 # Heavy model-inference dependencies. Install CPU-only PyTorch separately first
 # when running on CPU; see the README setup instructions.
 embeddings = [
+    "numpy>=1.26",
     "sentence-transformers>=3.0",
 ]
 
