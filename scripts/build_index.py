@@ -15,13 +15,13 @@ Implementation checklist:
 
 Keep the script offline: it should not call the hosted LLM provider.
 """
-from src.site_assistant.ingestion.chunker import TextChunk 
-from src.site_assistant.retrieval.vector_store import NumpyVectorStore
-from src.site_assistant.config import settings
-from src.site_assistant.retrieval.embeddings import E5Embedder
 import logging
-from pathlib import Path
-from typing import Sequence
+from collections.abc import Sequence
+
+from src.site_assistant.config import settings
+from src.site_assistant.ingestion.chunker import TextChunk
+from src.site_assistant.retrieval.embeddings import E5Embedder
+from src.site_assistant.retrieval.vector_store import NumpyVectorStore
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
