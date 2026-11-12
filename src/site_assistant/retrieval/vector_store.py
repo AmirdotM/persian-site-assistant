@@ -1,14 +1,20 @@
-"""In-memory NumPy vector search for a small demo index."""
+
+"""In-memory NumPy vector search with disk persistence."""
+
+from __future__ import annotations
 
 import json
-from asyncio.log import logger
+import logging
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import numpy as np
 
 from site_assistant.ingestion.chunker import TextChunk
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,86 +26,180 @@ class SearchHit:
 class NumpyVectorStore:
     """Minimal vector store; vectors are expected to be L2-normalized."""
 
-    def __init__(self, vectors: np.ndarray, chunks: Sequence[TextChunk]) -> None:
-        if len(vectors) != len(chunks):
-            raise ValueError("Each vector must map to exactly one chunk")
-        if len(vectors) == 0:
-            raise ValueError("The vector store cannot be empty")
+    FORMAT_VERSION = 1
+
+    def __init__(
+        self,
+        vectors: np.ndarray,
+        chunks: Sequence[TextChunk],
+    ) -> None:
         self.vectors = np.asarray(vectors, dtype=np.float32)
         self.chunks = list(chunks)
 
-    def search(self, query_vector: np.ndarray, top_k: int = 4) -> list[SearchHit]:
-        """Return the top-k chunks by cosine similarity (dot product if normalized)."""
+        self.validate()
+
+    def search(
+        self,
+        query_vector: np.ndarray,
+        top_k: int = 4,
+    ) -> list[SearchHit]:
+        """Return the top-k chunks by cosine similarity."""
+
         query = np.asarray(query_vector, dtype=np.float32).reshape(-1)
+
         if query.shape[0] != self.vectors.shape[1]:
-            raise ValueError("Query vector dimension does not match indexed vectors")
+            raise ValueError(
+                "Query vector dimension does not match indexed vectors"
+            )
+
+        if not np.isfinite(query).all():
+            raise ValueError("Query vector contains invalid values")
+
         query_norm = np.linalg.norm(query)
+
         if query_norm == 0:
             raise ValueError("Query vector cannot be all zeros")
+
         query = query / query_norm
+
         scores = self.vectors @ query
+
         count = min(max(top_k, 0), len(self.chunks))
         indices = np.argsort(scores)[::-1][:count]
-        return [SearchHit(self.chunks[int(i)], float(scores[int(i)])) for i in indices]
 
-    # TODO: add index persistence.
-    # ---------------------------------------------------------------------
-    # Persistence helpers
-    # ---------------------------------------------------------------------
+        return [
+            SearchHit(self.chunks[int(i)], float(scores[int(i)]))
+            for i in indices
+        ]
+
+    @staticmethod
+    def _normalize_path(path: Path) -> Path:
+        """Ensure the index file has an .npz extension."""
+
+        path = Path(path)
+
+        if path.suffix != ".npz":
+            path = path.with_suffix(".npz")
+
+        return path
+
     def save(self, path: Path) -> None:
-        """Save the store to disk."""
+        """Save vectors and chunk information to disk."""
+
+        path = self._normalize_path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Save chunks and metadata as JSON
+        self.validate()
+
+        # OLD APPROACH ():
+        # data = {
+        #     "chunks": self.chunks,
+        #     "metadata": self.metadata,
+        # }
+        #
+        # Problems:
+        # 1. TextChunk objects cannot be directly serialized by json.dumps().
+        # 2. self.metadata was never initialized.
+
+        # asdict() converts each TextChunk dataclass into a dictionary.
+        chunk_data = [asdict(chunk) for chunk in self.chunks]
+
         data = {
-            "chunks": self.chunks,
-            "metadata": self.metadata,
+            "format_version": self.FORMAT_VERSION,
+            "chunks": chunk_data,
         }
 
         json_path = path.with_suffix(".json")
-        json_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
-        # Save embeddings as numpy array
-        np.savez_compressed(path, embeddings=self._get_matrix())
+        json_path.write_text(
+            json.dumps(data, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
 
-        logger.info(f"Saved vector store to {path}")
+        # OLD APPROACH ():
+        # np.savez_compressed(path, embeddings=self._get_matrix())
+        #
+        # _get_matrix() did not exist.
+        #
+        # self.vectors is already the NumPy matrix, so save it directly.
 
-    def load(self, path: Path) -> None:
-        """Load the store from disk."""
-        try:
-            # Load chunks and metadata
-            json_path = path.with_suffix(".json")
-            if json_path.exists():
-                data = json.loads(json_path.read_text(encoding="utf-8"))
-                self.chunks = data.get("chunks", [])
-                self.metadata = data.get("metadata", [])
+        np.savez_compressed(path, embeddings=self.vectors)
 
-            # Load embeddings
-            if path.exists():
-                with np.load(path) as loaded:
-                    # Convert back to list of lists for consistency
-                    matrix = loaded["embeddings"]
-                    self.embeddings = matrix.tolist()
-                    self._matrix = matrix
+        logger.info("Saved vector store to %s", path)
 
-            logger.info(f"Loaded vector store from {path} ({len(self.chunks)} items)")
-        except Exception as e:
-            logger.error(f"Failed to load vector store from {path}: {e}")
-            # Reset on failure
-            self.embeddings = []
-            self.chunks = []
-            self.metadata = []
-            self._matrix = None
+    @classmethod
+    def load(cls, path: Path) -> NumpyVectorStore:
+        """Load a vector store and return a new instance."""
+
+        path = cls._normalize_path(path)
+        json_path = path.with_suffix(".json")
+
+        if not path.is_file():
+            raise FileNotFoundError(f"Vector index not found: {path}")
+
+        if not json_path.is_file():
+            raise FileNotFoundError(f"Chunk metadata not found: {json_path}")
+
+        # Read chunk information.
+        data = json.loads(json_path.read_text(encoding="utf-8"))
+
+        if not isinstance(data, dict):
+            raise ValueError("Invalid index metadata format")
+
+        if data.get("format_version") != cls.FORMAT_VERSION:
+            raise ValueError("Unsupported index format version")
+
+        chunk_data = data.get("chunks")
+
+        if not isinstance(chunk_data, list):
+            raise ValueError("Index metadata must contain a chunks list")
+
+        # Reconstruct the original TextChunk dataclass objects.
+        chunks: list[TextChunk] = []
+
+        for item in chunk_data:
+            if not isinstance(item, dict):
+                raise ValueError("Invalid chunk metadata entry")
+
+            chunks.append(TextChunk(**item))
+
+        # Read the NumPy matrix.
+        with np.load(path, allow_pickle=False) as loaded:
+            if "embeddings" not in loaded.files:
+                raise ValueError("Index file does not contain embeddings")
+
+            vectors = loaded["embeddings"]
+
+        # OLD APPROACH ():
+        # self.embeddings = matrix.tolist()
+        # self._matrix = matrix
+        #
+        # These attributes were not used by search().
+        # The class expects its matrix to be stored in self.vectors.
+        #
+        # cls(...) constructs a fresh object and initializes that attribute.
+
+        store = cls(vectors=vectors, chunks=chunks)
+
+        logger.info(
+            "Loaded vector store from %s (%s chunks)",
+            path,
+            len(store.chunks),
+        )
+
+        return store
 
     def validate(self) -> None:
-        """Validate vector/chunk counts and vector dimensions.
+        """Validate vector shape, values, and chunk alignment."""
 
-        Raises
-        ------
-        ValueError
-            If validation fails.
-        """
-        if len(self.vectors) != len(self.chunks):
+        if self.vectors.ndim != 2:
+            raise ValueError("Vectors must be a 2-D array")
+
+        if self.vectors.shape[0] == 0 or self.vectors.shape[1] == 0:
+            raise ValueError("Vector matrix cannot be empty")
+
+        if self.vectors.shape[0] != len(self.chunks):
             raise ValueError("Vector and chunk counts must match")
-        if self.vectors.ndim != 2 or self.vectors.shape[0] == 0:
-            raise ValueError("Vectors must be a 2-D array with at least one vector")
+
+        if not np.isfinite(self.vectors).all():
+            raise ValueError("Vector matrix contains invalid values")
