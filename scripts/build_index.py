@@ -1,73 +1,78 @@
-"""Build the local retrieval index.
+"""Build the local retrieval index from the source knowledge base.
 
-TODO: Implement this as a thin orchestration script. See IMPLEMENTATION_PLAN.md.
+Run from the repository root after installing the `embeddings` extra:
 
-Implementation checklist:
-1. Read corpus/output paths and embedding settings from application settings.
-2. Call the existing build_chunks() pipeline for data/raw/demo_company.
-3. Report a clear error and stop if the corpus produces no chunks.
-4. Extract chunk text in its existing order and pass it to E5Embedder.embed_passages().
-   The embedder adds the required "passage: " prefix; do not add it here.
-5. Verify that the embedding matrix is 2-D and has one row per chunk.
-6. Construct NumpyVectorStore with the aligned matrix and chunk list, then save it
-   beneath data/index/ using one consistent .npz path.
-7. Print source-document count, chunk count, embedding dimension, and saved path.
+    python scripts/build_index.py
 
-Keep the script offline: it should not call the hosted LLM provider.
+This is an offline preparation step. The FastAPI application loads the
+resulting files; it does not rebuild the index on every startup.
 """
+
 import logging
-from collections.abc import Sequence
+from pathlib import Path
 
-from src.site_assistant.config import settings
-from src.site_assistant.ingestion.chunker import TextChunk
-from src.site_assistant.retrieval.embeddings import E5Embedder
-from src.site_assistant.retrieval.vector_store import NumpyVectorStore
+from site_assistant.config import settings
+from site_assistant.ingestion.pipeline import build_chunks
+from site_assistant.retrieval.embeddings import E5Embedder
+from site_assistant.retrieval.vector_store import NumpyVectorStore
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def build_index():
-    """Build the local retrieval index."""
-    data_dir = settings.data_dir
-    chunks_path = data_dir / "chunks" / "chunks.jsonl"
-    index_path = data_dir / "index" / "vector_store.npz"
+INDEX_FILENAME = "vector_store.npz"
 
-    # Load chunks from the existing JSONL file
-    if not chunks_path.exists():
-        logger.error(f"Chunks file not found: {chunks_path}")
-        return
 
-    chunks: Sequence[TextChunk] = TextChunk.load_chunks(chunks_path)
+def build_index() -> Path:
+    """Create embeddings for the source chunks and persist the vector store."""
+    # 1. Load source documents and split them into TextChunk objects.
+    # build_chunks() already uses data/raw/demo_company/ and the configured
+    # chunk size/overlap, so we should not introduce a second chunks.jsonl path.
+    chunks = build_chunks()
+
     if not chunks:
-        logger.error("No chunks found in the corpus.")
-        return
+        raise ValueError(
+            "No text chunks were created. Check data/raw/demo_company/ "
+            "and the document loader."
+        )
 
-    # Extract chunk texts for embedding
-    chunk_texts = [chunk.text for chunk in chunks]
-
-    # Embed the chunk texts using E5Embedder
+    # 2. Embed the chunk text in exactly the same order as the chunks.
+    # E5Embedder adds the required "passage: " prefix internally.
     embedder = E5Embedder(
         model_name=settings.embedding_model,
         device=settings.embedding_device,
-        timeout_seconds=settings.llm_timeout_seconds,
     )
-    embeddings = embedder.embed_passages(chunk_texts)
+    embeddings = embedder.embed_passages([chunk.text for chunk in chunks])
 
-    # Validate embedding matrix dimensions
-    if embeddings.ndim != 2 or embeddings.shape[0] != len(chunks):
-        logger.error("Embedding matrix dimensions do not match the number of chunks.")
-        return
+    # 3. Make sure every chunk has exactly one embedding row.
+    if embeddings.ndim != 2:
+        raise ValueError(
+            f"Expected a 2-D embedding matrix, got {embeddings.ndim}-D."
+        )
 
-    # Create and save the vector store
+    if embeddings.shape[0] != len(chunks):
+        raise ValueError(
+            "Embedding/chunk count mismatch: "
+            f"{embeddings.shape[0]} vectors for {len(chunks)} chunks."
+        )
+
+    # 4. Save both the vectors and their matching chunk metadata.
+    # NumpyVectorStore.save(".../vector_store.npz") writes:
+    #   vector_store.npz  -> NumPy embedding matrix
+    #   vector_store.json -> serialized TextChunk records + format version
+    index_path = settings.data_dir / "index" / INDEX_FILENAME
     vector_store = NumpyVectorStore(vectors=embeddings, chunks=chunks)
-    index_path.parent.mkdir(parents=True, exist_ok=True)
     vector_store.save(index_path)
 
-    logger.info(f"Index built successfully: {index_path}")
-    logger.info(f"Source documents: {len(set(chunk.source for chunk in chunks))}")
-    logger.info(f"Chunks: {len(chunks)}")
-    logger.info(f"Embedding dimension: {embeddings.shape[1]}")
+    source_count = len({chunk.source_id for chunk in chunks})
+    logger.info("Index created successfully.")
+    logger.info("Source documents represented: %d", source_count)
+    logger.info("Chunks: %d", len(chunks))
+    logger.info("Embedding dimensions: %d", embeddings.shape[1])
+    logger.info("Vector file: %s", index_path)
+    logger.info("Chunk metadata: %s", index_path.with_suffix(".json"))
+
+    return index_path
 
 
-
-
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    build_index()
