@@ -15,7 +15,9 @@ class E5Embedder:
         try:
             from sentence_transformers import SentenceTransformer
         except ImportError as exc:
-            raise RuntimeError('Install the RAG extra: pip install -e ".[rag]"') from exc
+            raise RuntimeError(
+                'Install the embedding dependencies: pip install -e ".[embeddings]"'
+            ) from exc
 
         self.model = SentenceTransformer(
             model_name or settings.embedding_model,
