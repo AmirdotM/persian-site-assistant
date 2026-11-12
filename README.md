@@ -23,7 +23,7 @@ Website widget → FastAPI → Persian normalization → E5 embeddings
 - Python 3.12, FastAPI, Pydantic
 - OpenAI-compatible LLM API
 - `intfloat/multilingual-e5-small` embeddings
-- NumPy similarity search
+- NumPy similarity search and persistence
 - Vanilla JavaScript and CSS
 - pytest and Ruff
 
@@ -56,13 +56,41 @@ Website widget → FastAPI → Persian normalization → E5 embeddings
 
 ## Setup
 
+Create and activate a virtual environment:
+
 ```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install -e ".[dev,rag]"
 Copy-Item .env.example .env
 ```
+
+Install the lightweight development and vector dependencies:
+
+```powershell
+python -m pip install -e ".[dev,vector]"
+```
+
+### Enable local E5 embeddings (CPU)
+
+The embedding extra installs Sentence Transformers and its model-inference dependencies. To avoid pulling a CUDA-enabled PyTorch build on a CPU-only machine, install the CPU wheel first from the official PyTorch CPU index:
+
+```powershell
+python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+python -m pip install -e ".[embeddings]"
+```
+
+The second command installs Sentence Transformers. Pip should keep the already-installed CPU PyTorch version because it satisfies the package requirement. Check the installed build with:
+
+```powershell
+python -c "import torch; print(torch.__version__); print(torch.cuda.is_available())"
+```
+
+For a CPU installation, `torch.cuda.is_available()` should be `False`. For NVIDIA GPU inference, use the matching command from the official [PyTorch installation selector](https://pytorch.org/get-started/locally/) instead of the CPU index.
+
+The embedding model weights are downloaded when the embedder first loads the configured model, not by the project setup command itself.
+
+### Run the API
 
 Configure the provider credentials and model in `.env`, then start the API:
 
@@ -81,6 +109,16 @@ python -m http.server 5500
 ```
 
 Demo page: `http://127.0.0.1:5500/widget/demo.html`
+
+## Dependency groups
+
+| Extra | Includes | Use |
+|---|---|---|
+| `dev` | pytest, pytest-cov, Ruff | Tests and linting |
+| `vector` | NumPy | Vector search and index persistence |
+| `embeddings` | Sentence Transformers | E5 model inference |
+
+The GitHub Actions test job installs `.[dev,vector]`. It does not install Sentence Transformers, PyTorch, CUDA libraries, or model weights. Unit tests should mock the embedder and test vector behavior independently.
 
 ## Configuration
 
@@ -105,4 +143,4 @@ python -m pytest
 ruff check .
 ```
 
-The current MVP includes the API shell, Persian normalization, document loading and chunking, E5 embedding and retrieval components, a Persian prompt, sample content, and the widget interface. Index persistence, end-to-end service initialization, API integration, and evaluation execution are in progress.
+The current MVP includes the API shell, Persian normalization, document loading and chunking, E5 embedding and retrieval components, a Persian prompt, sample content, and the widget interface. Index generation, end-to-end service initialization, and evaluation execution are in progress.
