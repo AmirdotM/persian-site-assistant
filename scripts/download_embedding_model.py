@@ -78,7 +78,7 @@ def main() -> int:
 
     print("Model weights verified.")
     print(f"Downloading the remaining files from {MODEL_REPO}...")
-    
+
     try:
         from huggingface_hub import snapshot_download
     except ImportError:
