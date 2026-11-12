@@ -42,7 +42,7 @@ def load_local_documents(directory: Path) -> list[SourceDocument]:
             title = soup.title.get_text(" ", strip=True) if soup.title else path.stem
             for node in soup(["script", "style", "noscript"]):
                 node.decompose()
-            raw_text = soup.get_text("\\n", strip=True)
+            raw_text = soup.get_text("\n", strip=True)
         elif suffix == ".md":
             title = _markdown_title(raw_text, path.stem)
         else:
