@@ -76,7 +76,6 @@ Create and activate a virtual environment:
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-.\.venv\Scripts\Activate.ps1
 Copy-Item .env.example .env
 ```
 
