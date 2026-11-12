@@ -1,4 +1,20 @@
-"""FastAPI application entry point."""
+"""FastAPI application entry point.
+
+TODO: Initialize and release the RAG services through the FastAPI lifespan.
+See IMPLEMENTATION_PLAN.md for the full acceptance criteria.
+
+Startup checklist:
+- Load and validate the persisted vector store from the configured index path.
+- Initialize E5Embedder with the same model/device used to build the index.
+- Construct Retriever, LLMClient, and ChatService.
+- Attach the ready service to app.state.chat_service (the chat route reads this).
+- Expose readiness separately from process liveness; a healthy process without an
+  index or provider configuration must not appear chat-ready.
+
+Shutdown checklist:
+- Close the async LLM client cleanly when the application stops.
+- Keep startup failures explicit and actionable; do not silently swallow them.
+"""
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
