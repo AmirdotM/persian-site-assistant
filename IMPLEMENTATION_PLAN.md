@@ -5,14 +5,16 @@ Demo target: Saturday, 2026-11-14
 
 ## Current repository state
 
-- The document loader, Persian normalization, chunker, E5 embedder, NumPy retrieval, retriever, LLM client, chat service, API route, and basic RTL widget are present.
-- Vector-store persistence now has `save()`, class-based `load()`, format versioning, and validation. It still needs dedicated round-trip tests before the rest of the app relies on it.
+- The document loader, Persian normalization, chunker, E5 embedder, NumPy retrieval, retriever, LLM client, chat service, and API route are present.
+- The fictional knowledge base now includes expanded company, service, process, contact and FAQ material plus four clearly labelled illustrative project briefs.
+- A four-page Persian RTL website (home, services, showcase, contact/FAQ) and a redesigned embeddable chat widget are in place. The widget continues to call the existing `POST /api/v1/chat` contract.
+- Vector-store persistence has `save()`, class-based `load()`, format versioning, validation, and a basic round-trip test.
 - `scripts/build_index.py` now orchestrates the existing chunking pipeline, E5 passage embedding, and vector-store persistence. It has deterministic tests using a fake embedder, so CI does not download model weights.
 - `evals/run_evals.py` remains unimplemented.
 - `main.py` does not initialize `app.state.chat_service`. The chat endpoint therefore remains unavailable (503).
 - The widget already sends `POST /api/v1/chat` and renders answers and source links. It has not yet been verified against a live, initialized backend.
 - The sample evaluation file currently has 7 cases.
-- CI installs `.[dev,vector]` and keeps Sentence Transformers/PyTorch out of the test job. The last confirmed workflow passed 12 tests and Ruff; new index-builder tests have now been added and are awaiting CI verification.
+- CI installs `.[dev,vector]` and keeps Sentence Transformers/PyTorch out of the test job. The latest confirmed run passed 14 tests and Ruff; website/content changes do not alter the backend test dependencies.
 
 ## Work order
 
@@ -64,15 +66,16 @@ I need to wire the existing services together once when the application starts.
 
 **Done when:** a real Persian API request returns an answer with sources, while unsupported or unavailable cases fail safely.
 
-### 5. Verify and polish the widget
+### 5. Verify the website and widget against the backend
 
-The initial frontend request/rendering code is already present, so this is an integration and quality pass.
+The four-page Persian RTL site and shared widget are implemented. The remaining work here is browser verification against the live FastAPI service.
 
-- Verify the demo page sends the expected request to the configured API base URL.
-- Confirm Persian answers and sources render correctly with the current response schema.
-- Test loading, duplicate-submit prevention, empty input, non-JSON error responses, server errors, and unavailable API behavior.
-- Check mobile dimensions, keyboard use, focus behavior, and RTL layout.
-- Keep all provider credentials server-side and use safe text insertion for generated content.
+- Open `http://127.0.0.1:5500/website/` while serving the repository root and check all four pages and responsive navigation.
+- Confirm the widget sends the expected request to the configured API base URL.
+- Confirm Persian answers and source cards render correctly with the current response schema.
+- Test loading, duplicate-submit prevention, empty input, non-JSON errors, server errors, and unavailable API behavior.
+- Check mobile layout, keyboard/focus behavior, and RTL direction.
+- Keep credentials server-side and use safe text insertion for generated content.
 
 **Done when:** the local demo supports one successful conversation and one clear failure scenario.
 
