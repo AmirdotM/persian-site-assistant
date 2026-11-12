@@ -12,7 +12,6 @@ import numpy as np
 
 from site_assistant.ingestion.chunker import TextChunk
 
-
 logger = logging.getLogger(__name__)
 
 
