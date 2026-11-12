@@ -1,15 +1,12 @@
 """In-memory NumPy vector search for a small demo index."""
 
+import json
 from asyncio.log import logger
 from collections.abc import Sequence
 from dataclasses import dataclass
-
-import os
-import json
-from typing import Dict, List, Union
-import numpy as np
 from pathlib import Path
-import logging
+
+import numpy as np
 
 from site_assistant.ingestion.chunker import TextChunk
 
@@ -31,7 +28,7 @@ class NumpyVectorStore:
         self.vectors = np.asarray(vectors, dtype=np.float32)
         self.chunks = list(chunks)
 
-    def search(self, query_vector: np.ndarray, top_k: int = 4) -> List[SearchHit]:
+    def search(self, query_vector: np.ndarray, top_k: int = 4) -> list[SearchHit]:
         """Return the top-k chunks by cosine similarity (dot product if normalized)."""
         query = np.asarray(query_vector, dtype=np.float32).reshape(-1)
         if query.shape[0] != self.vectors.shape[1]:
