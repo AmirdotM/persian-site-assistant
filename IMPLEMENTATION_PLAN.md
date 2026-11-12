@@ -7,11 +7,12 @@ Demo target: Saturday, 2026-11-14
 
 - The document loader, Persian normalization, chunker, E5 embedder, NumPy retrieval, retriever, LLM client, chat service, API route, and basic RTL widget are present.
 - Vector-store persistence now has `save()`, class-based `load()`, format versioning, and validation. It still needs dedicated round-trip tests before the rest of the app relies on it.
-- `scripts/build_index.py` and `evals/run_evals.py` are still `NotImplementedError` stubs.
+- `scripts/build_index.py` now orchestrates the existing chunking pipeline, E5 passage embedding, and vector-store persistence. It has deterministic tests using a fake embedder, so CI does not download model weights.
+- `evals/run_evals.py` remains unimplemented.
 - `main.py` does not initialize `app.state.chat_service`. The chat endpoint therefore remains unavailable (503).
 - The widget already sends `POST /api/v1/chat` and renders answers and source links. It has not yet been verified against a live, initialized backend.
 - The sample evaluation file currently has 7 cases.
-- The latest GitHub Actions run passed all 10 existing tests but failed Ruff with one `I001` import-order finding in `vector_store.py`. The workflow currently installs `.[dev]`, not the optional `[rag]` extra needed by NumPy/vector-store tests.
+- CI installs `.[dev,vector]` and keeps Sentence Transformers/PyTorch out of the test job. The last confirmed workflow passed 12 tests and Ruff; new index-builder tests have now been added and are awaiting CI verification.
 
 ## Work order
 
@@ -30,17 +31,15 @@ I need to make persistence a reliable contract before using it in the API.
 
 ### 2. Build the local index
 
-I need to finish `scripts/build_index.py` as a thin orchestration script, reusing the existing helpers.
+The orchestration script is now implemented and covered by model-free tests. The next step is to verify it in CI and run it locally with the actual E5 model.
 
-- Read the source and output paths, embedding model, device, and chunk settings from application settings.
-- Call `build_chunks()`; do not duplicate the loader or chunking logic.
-- Stop with a useful message if no chunks are produced.
-- Pass raw chunk texts to `E5Embedder.embed_passages()`; that method already adds the `passage: ` prefix.
-- Keep embedding row order aligned with chunk order.
-- Validate the matrix shape and row count before constructing and saving the store.
-- Print source-document count, chunk count, embedding dimensions, and output path.
+- `build_index()` reuses `build_chunks()` from the ingestion pipeline.
+- It passes raw chunk text to `E5Embedder.embed_passages()`; the embedder adds the `passage: ` prefix.
+- It checks the embedding matrix and chunk count before constructing the store.
+- `NumpyVectorStore.save()` writes `data/index/vector_store.npz` and `data/index/vector_store.json`.
+- Unit tests mock the embedder and verify both files and the round-trip load.
 
-**Done when:** `python scripts/build_index.py` writes the index and metadata under `data/index/`, and a separate process can load the saved index.
+**Done when:** CI passes the builder tests and `python scripts/build_index.py` writes an actual index locally that can be loaded in a separate process.
 
 ### 3. Initialize the backend during FastAPI startup
 
