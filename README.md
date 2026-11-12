@@ -103,13 +103,23 @@ python -c "import torch; print(torch.__version__); print(torch.cuda.is_available
 
 For a CPU installation, `torch.cuda.is_available()` should be `False`. For NVIDIA GPU inference, use the matching command from the official [PyTorch installation selector](https://pytorch.org/get-started/locally/) instead of the CPU index.
 
-Download the model files into the project-local `models/multilingual-e5-small/` directory:
+Download the large model weights manually first. Use a download manager with this direct Hugging Face link:
+
+[Download model.safetensors (471 MB)](https://huggingface.co/intfloat/multilingual-e5-small/resolve/97e13e802c05f5dbe5a86832df6d6f68b252e885/model.safetensors)
+
+Save the file as:
+
+```text
+models/multilingual-e5-small/model.safetensors
+```
+
+Then run the project downloader:
 
 ```powershell
 python scripts/download_embedding_model.py
 ```
 
-The downloader fetches only the files needed by Sentence Transformers and skips duplicate PyTorch/ONNX exports. It uses Hugging Face's `snapshot_download` with a local destination. If the connection fails, run the same command again after reconnecting.
+The script verifies the large file using its SHA-256 checksum, then downloads only the remaining configuration and tokenizer files. It will not attempt to download the model weights again. If a smaller-file download fails, run the script again after reconnecting.
 
 Set the local model path in `.env`:
 
