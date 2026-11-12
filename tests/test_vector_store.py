@@ -9,7 +9,7 @@ from math import e
 
 import numpy as np
 import pytest
-from site_assistant.retrieval.vector_store import TextChunk, VectorStore
+from src.site_assistant.retrieval.vector_store import TextChunk, VectorStore
 
 def test_vector_store_round_trip(tmp_path) -> None:
     # Create a simple vector store with one chunk and a 2-D vector array
