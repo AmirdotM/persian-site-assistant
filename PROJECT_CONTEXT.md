@@ -6,14 +6,16 @@ Last reviewed: 2026-11-12
 
 I'm building a Persian-first website support assistant that can be embedded as a small RTL chat widget. It should answer questions from a site's own content, use a hosted LLM for generation, and show the sources behind its answers.
 
-## Stack
+## Stack and dependencies
 
 - Python 3.11+; FastAPI and Pydantic
-- `intfloat/multilingual-e5-small` for multilingual embeddings
-- NumPy for vector search and index persistence
+- NumPy for vector search and persistence (`vector` extra)
+- `intfloat/multilingual-e5-small` using Sentence Transformers (`embeddings` extra)
 - OpenAI-compatible API for hosted LLM generation
 - Vanilla JavaScript and CSS for the embeddable widget
-- pytest and Ruff for testing and linting
+- pytest and Ruff (`dev` extra)
+
+CI installs `.[dev,vector]`: it needs NumPy for vector-store tests but should not install Sentence Transformers, PyTorch, CUDA runtimes, or model weights. For local CPU embeddings, install CPU-only PyTorch from the official PyTorch CPU index first, then install `.[embeddings]`. See README setup instructions.
 
 Current defaults: CPU embeddings, top-k 4, minimum retrieval score 0.35, 900-character chunks, and 120-character overlap. These are centralized in `src/site_assistant/config.py`.
 
@@ -40,7 +42,7 @@ Current defaults: CPU embeddings, top-k 4, minimum retrieval score 0.35, 900-cha
 - Persian generation prompt, hosted LLM client, and a chat service that returns source references.
 - FastAPI health and chat routes.
 - Basic RTL widget. The current JavaScript already sends `POST /api/v1/chat` and renders answers/source links; live end-to-end verification remains.
-- Sample company content, 7 starter evaluation cases, baseline tests, and GitHub Actions.
+- Sample company content, starter evaluation cases, baseline tests, and a GitHub Actions workflow.
 
 ## Important implementation details
 
@@ -49,12 +51,11 @@ Current defaults: CPU embeddings, top-k 4, minimum retrieval score 0.35, 900-cha
 - Keep the embedding rows and chunk records in exactly the same order.
 - Generated index files belong under `data/index/` and should stay out of version control.
 - The chat route expects `request.app.state.chat_service`. The current `main.py` does not initialize it yet, so the chat endpoint returns 503.
-- The GitHub Actions run for commit `06c39989` passed all 10 existing tests but failed Ruff with one `I001` import-order finding in `vector_store.py`.
-- Current CI installs `.[dev]`. Add the `[rag]` extra when CI begins running NumPy/vector-store tests; keep model downloads out of ordinary unit tests.
+- The latest CI run has a collection error in `tests/test_vector_store.py`: it imports `VectorStore`, but the implementation exports `NumpyVectorStore`. Fix the test interface before treating CI as green.
 
 ## Current priority
 
-1. Add vector-store persistence round-trip and failure-case tests; fix the Ruff import finding and get CI green.
+1. Fix vector-store tests and keep the dependency groups light; verify CI.
 2. Complete `scripts/build_index.py` and generate a local index.
 3. Initialize the embedder, store, retriever, LLM client, and chat service during FastAPI startup.
 4. Verify the complete API path, then test the already-wired widget against it.
