@@ -10,14 +10,14 @@ I'm building a Persian-first website support assistant that can be embedded as a
 
 - Python 3.11+; FastAPI and Pydantic
 - `intfloat/multilingual-e5-small` for multilingual embeddings
-- NumPy for the initial vector search implementation
+- NumPy for vector search and index persistence
 - OpenAI-compatible API for hosted LLM generation
 - Vanilla JavaScript and CSS for the embeddable widget
 - pytest and Ruff for testing and linting
 
-The current configuration uses CPU embeddings, top-k 4, minimum retrieval score 0.35, 900-character chunks, and 120-character overlap. These values are centralized in `src/site_assistant/config.py`.
+Current defaults: CPU embeddings, top-k 4, minimum retrieval score 0.35, 900-character chunks, and 120-character overlap. These are centralized in `src/site_assistant/config.py`.
 
-## Current structure
+## Structure
 
 - `data/raw/demo_company/`: sample company knowledge base
 - `src/site_assistant/ingestion/`: Persian normalization, document loading, and chunking
@@ -27,32 +27,41 @@ The current configuration uses CPU embeddings, top-k 4, minimum retrieval score 
 - `widget/`: standalone demo page and chat widget
 - `evals/`: evaluation questions and runner
 - `scripts/build_index.py`: index-building entry point
+- `PROJECT_CONTEXT.md`: compact project handoff notes
+- `IMPLEMENTATION_PLAN.md`: ordered implementation checklist and acceptance criteria
 
-## Implemented so far
+## Implemented
 
 - Local Markdown, text, and HTML document loading.
 - Persian text normalization and paragraph-aware chunking.
 - E5 passage and query embedding support.
 - NumPy cosine-similarity search and a retriever with a minimum-score threshold.
+- Vector-store `save()`, class-based `load()`, format versioning, and matrix/chunk validation.
 - Persian generation prompt, hosted LLM client, and a chat service that returns source references.
-- FastAPI health and chat routes, plus the basic RTL widget.
-- Sample company content, starter evaluation questions, tests, and a GitHub Actions workflow.
+- FastAPI health and chat routes.
+- Basic RTL widget. The current JavaScript already sends `POST /api/v1/chat` and renders answers/source links; live end-to-end verification remains.
+- Sample company content, 7 starter evaluation cases, baseline tests, and GitHub Actions.
 
 ## Important implementation details
 
-- `build_chunks()` already loads `data/raw/demo_company/` and applies the configured chunk size and overlap. Prefer using this pipeline rather than repeating loading and chunking logic in scripts.
-- `E5Embedder.embed_passages()` adds the required `passage: ` prefix internally. Pass it raw chunk text; adding the prefix again would duplicate it. Queries use `query: ` internally.
-- Keep the embedding rows and chunk records in exactly the same order. Each vector must continue to map to its corresponding chunk.
+- `build_chunks()` already loads `data/raw/demo_company/` and applies configured chunk size and overlap. Reuse it rather than duplicating ingestion logic.
+- `E5Embedder.embed_passages()` adds `passage: ` internally. Pass raw chunk text. Queries use `query: ` internally.
+- Keep the embedding rows and chunk records in exactly the same order.
 - Generated index files belong under `data/index/` and should stay out of version control.
-- The API route expects `request.app.state.chat_service`. The current `main.py` does not initialize that service yet, so the chat endpoint will return 503 until startup wiring is added.
+- The chat route expects `request.app.state.chat_service`. The current `main.py` does not initialize it yet, so the chat endpoint returns 503.
+- The GitHub Actions run for commit `06c39989` passed all 10 existing tests but failed Ruff with one `I001` import-order finding in `vector_store.py`.
+- Current CI installs `.[dev]`. Add the `[rag]` extra when CI begins running NumPy/vector-store tests; keep model downloads out of ordinary unit tests.
 
-## Current status and next steps
+## Current priority
 
-1. **Review and correct vector-store persistence.** The latest `vector_store.py` has `save()`, `load()`, and `validate()`, but they are not yet consistent with the constructor and search implementation. In particular, JSON serialization currently receives `TextChunk` dataclass objects directly; `self.metadata` and `_get_matrix()` are referenced but not defined; and `load()` is written as an instance mutator even though the constructor requires a non-empty matrix and matching chunks. Settle a clean save/load interface and add tests before relying on it.
-2. **Complete `scripts/build_index.py`.** Use the configured data paths and model, call `build_chunks()`, embed the chunk texts, construct the vector store, save it under `data/index/`, and print document count, chunk count, embedding dimensions, and output path. Handle an empty corpus clearly. The script is currently a `NotImplementedError` stub.
-3. **Add API startup wiring.** Load the saved index, initialize the embedder, retriever, LLM client, and `ChatService`, then attach the service to application state.
-4. **Add end-to-end and retrieval evaluation.** The current tests cover the API shell, chunking, and normalization; persistence/index-building tests and a working evaluation runner are still needed. Check CI dependencies when adding tests that require the optional RAG extra.
+1. Add vector-store persistence round-trip and failure-case tests; fix the Ruff import finding and get CI green.
+2. Complete `scripts/build_index.py` and generate a local index.
+3. Initialize the embedder, store, retriever, LLM client, and chat service during FastAPI startup.
+4. Verify the complete API path, then test the already-wired widget against it.
+5. Add retrieval evaluation, minimal safeguards, deployment or a recorded fallback, and final documentation/demo rehearsal.
+
+See `IMPLEMENTATION_PLAN.md` for detailed tasks and acceptance criteria.
 
 ## Development checks
 
-Run tests with `python -m pytest` and lint with `ruff check .`. The README documents the local setup and demo commands. Keep credentials in `.env` or deployment secrets; do not commit secrets, private source documents, model files, or generated indexes.
+Run `python -m pytest` and `ruff check .`. Keep credentials in `.env` or deployment secrets. Do not commit secrets, private source documents, model files, or generated indexes.
