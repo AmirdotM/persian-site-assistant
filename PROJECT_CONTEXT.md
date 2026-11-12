@@ -8,7 +8,7 @@ I'm building a Persian-first website support assistant that can be embedded as a
 
 ## Stack and dependencies
 
-- Python 3.11+; FastAPI and Pydantic
+- Python 3.11+; FastAPI, base Uvicorn (HTTP-only demo), and Pydantic
 - NumPy for vector search and persistence (`vector` extra)
 - `intfloat/multilingual-e5-small` using Sentence Transformers (`embeddings` extra)
 - OpenAI-compatible API for hosted LLM generation
