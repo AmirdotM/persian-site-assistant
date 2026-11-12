@@ -1,4 +1,3 @@
-
 """In-memory NumPy vector search with disk persistence."""
 
 from __future__ import annotations
@@ -91,17 +90,7 @@ class NumpyVectorStore:
 
         self.validate()
 
-        # OLD APPROACH ():
-        # data = {
-        #     "chunks": self.chunks,
-        #     "metadata": self.metadata,
-        # }
-        #
-        # Problems:
-        # 1. TextChunk objects cannot be directly serialized by json.dumps().
-        # 2. self.metadata was never initialized.
-
-        # asdict() converts each TextChunk dataclass into a dictionary.
+        # Convert TextChunk dataclasses to plain dictionaries before JSON encoding.
         chunk_data = [asdict(chunk) for chunk in self.chunks]
 
         data = {
@@ -115,13 +104,6 @@ class NumpyVectorStore:
             json.dumps(data, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
-
-        # OLD APPROACH ():
-        # np.savez_compressed(path, embeddings=self._get_matrix())
-        #
-        # _get_matrix() did not exist.
-        #
-        # self.vectors is already the NumPy matrix, so save it directly.
 
         np.savez_compressed(path, embeddings=self.vectors)
 
@@ -140,7 +122,6 @@ class NumpyVectorStore:
         if not json_path.is_file():
             raise FileNotFoundError(f"Chunk metadata not found: {json_path}")
 
-        # Read chunk information.
         data = json.loads(json_path.read_text(encoding="utf-8"))
 
         if not isinstance(data, dict):
@@ -154,7 +135,6 @@ class NumpyVectorStore:
         if not isinstance(chunk_data, list):
             raise ValueError("Index metadata must contain a chunks list")
 
-        # Reconstruct the original TextChunk dataclass objects.
         chunks: list[TextChunk] = []
 
         for item in chunk_data:
@@ -163,21 +143,16 @@ class NumpyVectorStore:
 
             chunks.append(TextChunk(**item))
 
-        # Read the NumPy matrix.
         with np.load(path, allow_pickle=False) as loaded:
             if "embeddings" not in loaded.files:
                 raise ValueError("Index file does not contain embeddings")
 
             vectors = loaded["embeddings"]
 
-        # OLD APPROACH ():
-        # self.embeddings = matrix.tolist()
-        # self._matrix = matrix
-        #
-        # These attributes were not used by search().
-        # The class expects its matrix to be stored in self.vectors.
-        #
-        # cls(...) constructs a fresh object and initializes that attribute.
+        # TODO: Add round-trip tests before using persisted indexes in the API:
+        # - all TextChunk fields and vector values survive save/load;
+        # - search results and similarity scores match before and after reload;
+        # - missing/corrupt files and vector/chunk mismatches fail clearly.
 
         store = cls(vectors=vectors, chunks=chunks)
 
