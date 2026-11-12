@@ -16,7 +16,7 @@ jobs:
       - name: Install project and development dependencies
         # TODO: Add the [rag] extra when vector-store/index tests are enabled in CI.
         # Keep model downloads out of the regular unit-test job; mock the embedder there.
-        run: python -m pip install -e ".[dev]"
+        run: python -m pip install -e ".[dev].[rag]"
       - name: Run tests
         run: python -m pytest
       - name: Lint
