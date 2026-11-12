@@ -14,7 +14,7 @@ Demo target: Saturday, 2026-11-14
 - `main.py` does not initialize `app.state.chat_service`. The chat endpoint therefore remains unavailable (503).
 - The widget already sends `POST /api/v1/chat` and renders answers and source links. It has not yet been verified against a live, initialized backend.
 - The sample evaluation file currently has 7 cases.
-- CI installs `.[dev,vector]` and keeps Sentence Transformers/PyTorch out of the test job. The latest confirmed run passed 14 tests and Ruff; website/content changes do not alter the backend test dependencies.
+- CI installs `.[dev,vector]` and keeps Sentence Transformers/PyTorch out of the test job. The latest confirmed run passed 16 tests and Ruff; website/content changes do not alter the backend test dependencies.
 
 ## Work order
 
