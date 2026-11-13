@@ -10,8 +10,8 @@ from site_assistant.schemas import ChatResponse, SourceReference
 # Remove legacy/model-invented inline labels. The UI presents retrieved documents
 # separately, so these labels are redundant and can point to the wrong chunk.
 _INLINE_SOURCE_MARKER = re.compile(
-    r"\\s*\\[\\s*S\\s*[0-9۰-۹٠-٩]+"
-    r"(?:\\s*[,،]\\s*S?\\s*[0-9۰-۹٠-٩]+)*\\s*\\]",
+    r"\s*\[\s*S\s*[0-9۰-۹٠-٩]+"
+    r"(?:\s*[,،]\s*S?\s*[0-9۰-۹٠-٩]+)*\s*\]",
     flags=re.IGNORECASE,
 )
 
