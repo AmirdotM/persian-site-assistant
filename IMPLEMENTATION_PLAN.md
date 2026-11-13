@@ -1,124 +1,117 @@
 # Implementation Plan
 
-Last reviewed: 2026-11-12
+Last reviewed: 2026-11-13
 Demo target: Saturday, 2026-11-14
 
 ## Current repository state
 
-- The document loader, Persian normalization, chunker, E5 embedder, NumPy retrieval, retriever, LLM client, chat service, and API route are present.
-- The fictional knowledge base now includes expanded company, service, process, contact and FAQ material plus four clearly labelled illustrative project briefs.
-- A four-page Persian RTL website (home, services, showcase, contact/FAQ) and a redesigned embeddable chat widget are in place. The widget continues to call the existing `POST /api/v1/chat` contract.
-- Vector-store persistence has `save()`, class-based `load()`, format versioning, validation, and a basic round-trip test.
-- `scripts/build_index.py` now orchestrates the existing chunking pipeline, E5 passage embedding, and vector-store persistence. It has deterministic tests using a fake embedder, so CI does not download model weights.
-- `evals/run_evals.py` remains unimplemented.
-- `main.py` does not initialize `app.state.chat_service`. The chat endpoint therefore remains unavailable (503).
-- The widget already sends `POST /api/v1/chat` and renders answers and source links. It has not yet been verified against a live, initialized backend.
-- The sample evaluation file currently has 7 cases.
-- CI installs `.[dev,vector]` and keeps Sentence Transformers/PyTorch out of the test job. The latest confirmed run passed 16 tests and Ruff; website/content changes do not alter the backend test dependencies.
+The core local demo path is implemented and has been exercised with a real local Ollama model.
 
-## Work order
+- Persian Markdown knowledge base, ingestion pipeline, chunking, and offline index builder are implemented.
+- The E5 embedding model is configured to load from a local model directory; generated model weights and vector index remain outside Git.
+- NumPy vector-store persistence and loading are implemented and covered by tests.
+- FastAPI lifespan loads the vector store, embedder, retriever, and LLM client; shutdown closes the LLM client.
+- The API exposes `/health`, `/ready`, and `POST /api/v1/chat`.
+- The Persian RTL website and embeddable widget are implemented. The widget displays assistant messages and source cards, uses safe text insertion, and has clear loading/error states.
+- A local API smoke test has passed against Ollama: health and readiness returned 200, a supported Persian question returned a grounded response with sources, and an unsupported question received an abstention-style response.
+- API hardening is in PR #1: blank-message validation, server-generated request IDs, sanitized upstream LLM errors, tests, and corrected runtime/deployment documentation.
+- GitHub Actions tests and Ruff pass on the hardening branch.
+- `evals/run_evals.py` is not implemented. Retrieval tuning and formal evaluation are intentionally deferred until after the demo.
 
-### 1. Stabilize vector-store persistence and CI
+## Remaining work before the demo
 
-I need to make persistence a reliable contract before using it in the API.
+### 1. Review and merge the API hardening PR
 
-- Fix the Ruff import-order finding in `vector_store.py`.
-- Add `tests/test_vector_store.py`.
-- Test save/load round-tripping: vector values and shape, all `TextChunk` fields, and search results/scores must match before and after loading.
-- Test clear failure behavior for a missing file, missing/corrupt metadata, invalid matrix shape, non-finite values, and vector/chunk count mismatch.
-- Ensure CI installs the RAG dependencies required by tests, without downloading the embedding model during ordinary unit tests.
-- Run `python -m pytest` and `ruff check .`; both must pass locally and in GitHub Actions.
+- Review PR #1: request IDs, blank input validation, and upstream error handling.
+- Merge only after confirming the CI checks are green.
+- Pull the updated `main` branch into the local working copy.
 
-**Done when:** a fresh store loaded from disk behaves exactly like the original, and CI is green.
+**Done when:** the reviewed API hardening changes are part of `main`.
 
-### 2. Build the local index
+### 2. Verify the actual website in a browser
 
-The orchestration script is now implemented and covered by model-free tests. The next step is to verify it in CI and run it locally with the actual E5 model.
+Run the backend and static website in separate terminals:
 
-- `build_index()` reuses `build_chunks()` from the ingestion pipeline.
-- It passes raw chunk text to `E5Embedder.embed_passages()`; the embedder adds the `passage: ` prefix.
-- It checks the embedding matrix and chunk count before constructing the store.
-- `NumpyVectorStore.save()` writes `data/index/vector_store.npz` and `data/index/vector_store.json`.
-- Unit tests mock the embedder and verify both files and the round-trip load.
+```powershell
+uvicorn site_assistant.main:app --reload --app-dir src
+python -m http.server 5500
+```
 
-**Done when:** CI passes the builder tests and `python scripts/build_index.py` writes an actual index locally that can be loaded in a separate process.
+Open `http://127.0.0.1:5500/website/` and verify:
 
-### 3. Initialize the backend during FastAPI startup
+- All four pages load and navigation works.
+- The chat widget opens, closes, and stays usable at desktop and mobile widths.
+- A supported question receives a Persian answer and source cards.
+- A follow-up question can be sent after the first response.
+- An unavailable API or provider produces a readable error, and the input becomes usable again.
+- Keyboard focus, Escape-to-close, and RTL layout behave sensibly.
 
-I need to wire the existing services together once when the application starts.
+**Suggested live demo questions:**
 
-- Use FastAPI's lifespan mechanism for startup and shutdown.
-- Load the persisted vector store and initialize the same configured E5 model used to build it.
-- Construct `Retriever`, `LLMClient`, and `ChatService`.
-- Make the service available to the existing route through `app.state.chat_service` (or a consistent dependency provider).
-- Make startup failures visible. Distinguish process liveness from chat readiness so `/health` does not imply the RAG service is ready when its index or provider configuration is missing.
-- Close the async LLM client during shutdown when appropriate.
+1. `شرکت چه خدماتی ارائه می‌دهد؟`
+2. `مراحل اجرای یک پروژه چگونه است؟`
+3. `شماره حساب بانکی مدیرعامل چیست؟` (The assistant should not invent an answer.)
 
-**Done when:** with a valid index and provider configuration, the API becomes ready and the chat route reaches `ChatService.answer()`.
+**Done when:** the complete browser → widget → API → retrieval → LLM → source-card path works at least twice in a row.
 
-### 4. Verify the backend end to end
+### 3. Make the local demo repeatable
 
-- Test the real request path: request validation → query embedding → retrieval → grounded prompt → LLM response → answer and source references.
-- Cover unsupported questions, empty/oversized input, missing index, and provider timeout/error.
-- Keep unit tests deterministic by mocking the embedder/provider where appropriate; perform one separate real-provider smoke test.
-- Confirm source IDs, titles, excerpts, and URLs are preserved correctly.
-- Run tests and Ruff again after integration.
+Before presenting:
 
-**Done when:** a real Persian API request returns an answer with sources, while unsupported or unavailable cases fail safely.
+- Confirm the local embedding model path in `.env` and confirm both generated index files exist in `data/index/`.
+- Start Ollama and verify the configured model tag with `ollama list`.
+- Confirm `LLM_BASE_URL`, `LLM_MODEL`, and `LLM_TIMEOUT_SECONDS` match the local provider.
+- Check `/health` and `/ready`, then run `python scripts/smoke_test_api.py`.
+- Keep the terminal running and avoid rebuilding the index immediately before the presentation unless the source documents changed.
 
-### 5. Verify the website and widget against the backend
+Prepare a 60–90 second screen recording or a few screenshots showing the website, one supported answer, and its source cards. Keep the local live demo as the primary path and the recording as the backup.
 
-The four-page Persian RTL site and shared widget are implemented. The remaining work here is browser verification against the live FastAPI service.
+**Done when:** the demo can be restarted from a short checklist without debugging or downloading model weights.
 
-- Open `http://127.0.0.1:5500/website/` while serving the repository root and check all four pages and responsive navigation.
-- Confirm the widget sends the expected request to the configured API base URL.
-- Confirm Persian answers and source cards render correctly with the current response schema.
-- Test loading, duplicate-submit prevention, empty input, non-JSON errors, server errors, and unavailable API behavior.
-- Check mobile layout, keyboard/focus behavior, and RTL direction.
-- Keep credentials server-side and use safe text insertion for generated content.
+### 4. Optional hosted demo
 
-**Done when:** the local demo supports one successful conversation and one clear failure scenario.
+Only deploy if the hosting route is reliable and does not consume time needed for the presentation.
 
-### 6. Add minimal operational safeguards
+A hosted setup must:
 
-- Enforce the existing request-size constraints consistently between the widget and API.
-- Keep provider timeouts bounded and error responses stable.
-- Log request duration and failure type without logging API keys, full prompts, or private user messages.
-- Avoid adding a database, Redis, authentication, or complex rate-limiting infrastructure for this demo.
+- Serve the API over HTTPS.
+- Configure `CORS_ORIGINS` to the exact website origin(s).
+- Set each widget script's `data-api-url` to the public API base URL.
+- Provide the generated files under `data/index/` and the configured E5 model directory.
+- Store the LLM key in server-side environment secrets.
+- Configure platform-level rate limits or access controls before public exposure.
 
-**Done when:** normal provider failures and invalid requests are understandable without exposing secrets or sensitive content.
+There is currently no Docker or hosting-provider deployment configuration. Do not expose the unauthenticated API as an unrestricted public endpoint.
 
-### 7. Implement retrieval evaluation
+**Done when:** a chat request succeeds from a separate browser/device and both health and readiness checks pass. Otherwise, use the local demo and recording backup.
 
-- Expand `evals/questions.jsonl` from 7 to around 10–15 cases.
-- Cover direct facts, paraphrases, Persian/Arabic character variants, multi-source questions, and unsupported questions.
-- Read the expected source IDs and compare them with retrieved top-k source IDs.
-- Report per-question results and a simple aggregate source-hit metric.
-- Review answer quality and abstention behavior manually; do not claim automated answer-quality scoring unless it is actually implemented.
+### 5. Prepare the technical walkthrough
 
-**Done when:** one command produces a repeatable retrieval report and the README explains exactly what it measures.
+Keep the explanation to 3–5 minutes:
 
-### 8. Deploy or prepare a dependable fallback
+1. The problem: answer website questions from a controlled knowledge base.
+2. Ingestion: load documents, normalize, chunk, and embed them offline.
+3. Retrieval: embed a query and search the saved NumPy vector index.
+4. Generation: pass retrieved passages to an OpenAI-compatible local or hosted LLM.
+5. Trust and operations: show source references, honest abstention, readiness checks, request IDs, and safe provider errors.
+6. Limitations: one demo knowledge base, no authentication, no distributed rate limiter, and retrieval evaluation not yet implemented.
 
-- Try one simple free deployment route, with a hard 45-minute investigation limit.
-- Configure the LLM credential as a server-side secret and set the production CORS origin.
-- Verify health/readiness and a real chat request from a separate browser or device.
-- If free-tier limits, cold starts, access, or networking make deployment unreliable, stop and record a 60–90 second local walkthrough.
-- Keep a tested local run command and sample questions ready.
+Be explicit that the sample company and project briefs are fictional demonstration material.
 
-**Done when:** either the public demo works from another device or the recording and local backup are ready.
+**Done when:** the architecture can be explained without claiming capabilities that are not implemented.
 
-### 9. Final documentation and presentation
+## Deferred until after the demo
 
-- Update the README to match what is actually implemented, with setup, configuration, run commands, sample questions, evaluation method/results, and known limitations.
-- Rehearse a 3–5 minute explanation: problem, RAG architecture, retrieval, evidence/citations, evaluation, limitations, and next improvements.
-- Prepare one answerable question and one unsupported question for the demo.
-- Run a final smoke test before the presentation.
+These are useful improvements, but they are not blockers for the current presentation:
 
-**Done when:** a fresh setup is documented and I can explain each implemented part accurately.
+- Implement the retrieval evaluation runner and expand the question set.
+- Investigate similarity-score calibration and improve unsupported-question filtering.
+- Add distributed rate limiting and authentication before any broader public release.
+- Add Docker/Compose or a repeatable cloud deployment configuration if a hosted deployment is required.
+- Explore a second hosted LLM provider after the local demo path is stable.
 
 ## Scope control
 
-The demo is one fictional company, one Persian-first widget, one FastAPI backend, one embedding model, one hosted LLM provider, citations, an honest fallback, and a small retrieval evaluation.
+The demo is one fictional company, one Persian-first website/widget, one FastAPI backend, one local E5 embedding model, one OpenAI-compatible LLM endpoint, and source-grounded responses.
 
-I am deliberately leaving fine-tuning, agents, authentication, multi-site crawling, databases, and additional infrastructure out of this sprint. Reliability of the complete path matters more than extra features.
+Do not add fine-tuning, agents, a database, multi-site crawling, or extra infrastructure before the presentation. A reliable complete path is more valuable than a larger feature list.
