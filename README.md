@@ -2,11 +2,11 @@
 
 Persian-first website support assistant using retrieval-augmented generation (RAG).
 
-**Status:** MVP under active development. The fictional company website and sample knowledge base are ready; FastAPI service initialization and end-to-end chat verification are the remaining backend integration work.
+**Status:** Working local MVP. The offline index build, FastAPI lifespan, RAG chat API, Persian RTL website/widget, health/readiness probes, and automated tests are implemented. Production deployment is not configured yet; review the deployment considerations before exposing it publicly.
 
 ## Overview
 
-The repository contains a small Persian RTL company website, an embeddable assistant widget, and a FastAPI backend. The assistant retrieves relevant passages from the company's local knowledge base, sends that context to an OpenAI-compatible LLM, and returns an answer with source references.
+The repository contains a small Persian RTL company website, an embeddable assistant widget, and a FastAPI backend. The assistant retrieves relevant passages from the local knowledge base, sends that context to a local or hosted OpenAI-compatible LLM, and returns an answer with source references.
 
 The sample company, its content, and every showcased project are fictional demonstration material. The showcase examples are illustrative concepts, not claims of completed client work.
 
@@ -144,9 +144,22 @@ This reads all supported documents recursively from `data/raw/demo_company/`, cr
 
 Rebuild the index whenever the source knowledge-base documents change. Do not run index generation on every API startup.
 
+### Configure the LLM
+
+For local development with Ollama's OpenAI-compatible endpoint, set these values in `.env` (use the exact model tag shown by `ollama list`):
+
+```ini
+LLM_API_KEY=ollama
+LLM_BASE_URL=http://127.0.0.1:11434/v1
+LLM_MODEL=your-local-model-tag
+LLM_TIMEOUT_SECONDS=120
+```
+
+For a hosted OpenAI-compatible provider, set its API key and model, plus its base URL when required. Keep provider credentials in the backend environment; never place them in website or widget JavaScript.
+
 ### Run the API
 
-Configure `LLM_API_KEY`, `LLM_MODEL`, and optionally `LLM_BASE_URL` in `.env`, then start:
+Start the backend from the repository root:
 
 ```powershell
 uvicorn site_assistant.main:app --reload --app-dir src
@@ -171,9 +184,21 @@ python scripts/smoke_test_api.py --base-url http://127.0.0.1:8000 --timeout 240
 ```
 
 
-Health check: `http://127.0.0.1:8000/health`
+Health check: `http://127.0.0.1:8000/health`  
+Readiness check: `http://127.0.0.1:8000/ready`
 
-**Backend status:** the chat route expects `app.state.chat_service`; FastAPI lifespan initialization is still being implemented. The widget can be viewed before that work is complete, but chat requests will not work until the service is initialized and the index/provider configuration is available.
+### Runtime behavior
+
+- `/health` reports that the API process is alive; `/ready` returns success only after the RAG chat service has initialized.
+- Every response includes an `X-Request-ID` header. Successful chat responses and upstream-provider error responses also include this ID in the JSON body.
+- LLM-provider API failures are returned as a generic `502` response. The backend logs the request ID and error type without returning provider internals to the browser.
+- The API accepts questions up to 4,000 characters and rejects empty or whitespace-only messages.
+
+### Deployment considerations
+
+This repository currently has no Docker or hosting-provider deployment configuration. For a hosted static website, set `data-api-url` on the widget script in each website page to the public HTTPS API base URL, and set backend `CORS_ORIGINS` to the exact website origin(s). The deployment must also provide the generated vector index at `data/index/` and the configured embedding model. Build the index as part of the deployment/build process; do not expect the API to create it on startup.
+
+This is an employer-demo MVP, not an unrestricted public service. Before public exposure, put the API behind HTTPS and configure platform-level access controls or rate limits. There is currently no user authentication or distributed rate limiter.
 
 ### Run the website
 
@@ -218,9 +243,11 @@ The GitHub Actions test job installs `.[dev,vector]`. It does not install Senten
 
 | Variable | Description |
 |---|---|
+| `APP_ENV` | Environment label, such as `development` or `production` |
+| `CORS_ORIGINS` | Comma-separated allowed website origins; use exact origins when hosted |
 | `LLM_API_KEY` | Provider API key |
 | `LLM_BASE_URL` | OpenAI-compatible API base URL |
-| `LLM_MODEL` | Provider model identifier |
+| `LLM_MODEL` | Provider model identifier |\n| `LLM_TIMEOUT_SECONDS` | Timeout for a provider generation request |
 | `EMBEDDING_MODEL` | Embedding model or local model directory |
 | `EMBEDDING_DEVICE` | Embedding device (`cpu` by default) |
 | `RETRIEVAL_TOP_K` | Number of retrieved passages |
