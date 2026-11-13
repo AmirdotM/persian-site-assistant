@@ -109,7 +109,7 @@
     list.className = "psa-sources";
     const label = document.createElement("div");
     label.className = "psa-sources-label";
-    label.textContent = "منابع پاسخ";
+    label.textContent = "اسناد مرتبط بررسی‌شده";
     list.appendChild(label);
 
     sources.slice(0, 5).forEach((source) => {
