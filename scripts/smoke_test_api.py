@@ -9,9 +9,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -100,7 +99,7 @@ def main() -> int:
     args = parse_args()
     base_url = args.base_url.rstrip("/")
     report: dict[str, Any] = {
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
         "base_url": base_url,
         "checks": [],
         "chat_tests": [],
