@@ -149,7 +149,7 @@
       if (typeof source.source_id === "string" && source.source_id) {
         const tag = document.createElement("span");
         tag.className = "psa-source-tag";
-        tag.textContent = "شناسه منبع: " + source.source_id;
+        tag.textContent = "شناسه سند: " + source.source_id;
         card.appendChild(tag);
       }
       list.appendChild(card);
