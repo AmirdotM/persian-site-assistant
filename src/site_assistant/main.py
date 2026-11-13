@@ -18,7 +18,7 @@ Shutdown checklist:
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from site_assistant import __version__
@@ -33,34 +33,46 @@ from site_assistant.retrieval.vector_store import NumpyVectorStore
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    # initialize the vector store
-    vector_store = NumpyVectorStore.load(settings.data_dir / "index" / "vector_store.npz")
 
-    # initialize the embedder
-    embedder = E5Embedder(model_name=settings.embedding_model, device=settings.embedding_device)
+    llm_client = None
+    app.state.chat_service = None
 
-    # initialize the retriever  
-    retriever = Retriever(vector_store=vector_store, embedder=embedder)
+    try:
+        # Load vector store
+        vector_store = NumpyVectorStore.load(
+            settings.data_dir / "index" / "vector_store.npz"
+        )
 
-    # initialize the LLM client
-    llm_client = LLMClient()
-        
-    
-    #connect the chat service
-    chat_service = ChatService(retriever=retriever, llm=llm_client)
+        # Initialize embedder
+        embedder = E5Embedder(
+            model_name=settings.embedding_model,
+            device=settings.embedding_device,
+        )
 
-    # attach the chat service to the app state
-    app.state.chat_service = chat_service
+        # Initialize retriever
+        retriever = Retriever(
+            vector_store=vector_store,
+            embedder=embedder,
+        )
 
+        # Initialize LLM client
+        llm_client = LLMClient()
 
+        # Construct chat service
+        app.state.chat_service = ChatService(
+            retriever=retriever,
+            llm=llm_client,
+        )
 
+        yield
 
-    yield
+    finally:
+        # Remove the service from application state
+        app.state.chat_service = None
 
-
-    #colse the LLM client cleanly
-    await llm_client.close()
-    
+        # Close the LLM client if it was successfully initialized
+        if llm_client is not None:
+            await llm_client.close()
 
 
 
@@ -102,13 +114,15 @@ async def health() -> dict[str, str]:
     return {"status": "ok", "version": __version__}
 
 #readiness endpoint for external checks of the chat service
+
+
+
 @app.get("/ready", tags=["health"])
-async def ready() -> dict[str, str]:
-    """Simple readiness endpoint for external checks of the chat service."""
-    chat_service = getattr(app.state, "chat_service", None)
-    if chat_service is None:
-        return {"status": "not ready", "version": __version__} 
-    elif not chat_service.is_ready():
-        return {"status": "not ready", "version": __version__}
-    else:
-        return {"status": "ok", "version": __version__}
+async def ready(request: Request):
+    if getattr(request.app.state, "chat_service", None) is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Chat service is unavailable",
+        )
+
+    return {"status": "ready", "version": __version__}
