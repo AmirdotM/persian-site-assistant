@@ -4,8 +4,8 @@ import asyncio
 
 from site_assistant.generation.prompts import SYSTEM_PROMPT_FA, build_user_prompt
 from site_assistant.generation.service import ChatService
-from site_assistant.retrieval.vector_store import SearchHit
 from site_assistant.ingestion.chunker import TextChunk
+from site_assistant.retrieval.vector_store import SearchHit
 
 
 class FakeRetriever:
