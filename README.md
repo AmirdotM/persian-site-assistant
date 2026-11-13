@@ -31,7 +31,7 @@ Markdown / HTML / TXT → loader → normalization → chunks
 
 Application serving (run for website visitors)
 Browser widget → FastAPI → query embedding → retrieval
-    → grounded prompt → hosted LLM → answer + sources
+    → grounded prompt → configured LLM → answer + sources
 ```
 
 ## Stack
