@@ -2,7 +2,7 @@
 
 Persian-first website support assistant using retrieval-augmented generation (RAG).
 
-**Status:** MVP under active development. The fictional company website and sample knowledge base are ready; FastAPI service initialization and end-to-end chat verification are the remaining backend integration work.
+**Status:** Working local MVP. The offline knowledge-base build, FastAPI RAG API, Persian RTL website/widget, and automated tests are implemented. The sample company and all its information are fictional demonstration content.
 
 ## Overview
 
@@ -31,7 +31,7 @@ Markdown / HTML / TXT → loader → normalization → chunks
 
 Application serving (run for website visitors)
 Browser widget → FastAPI → query embedding → retrieval
-    → grounded prompt → hosted LLM → answer + sources
+    → grounded prompt → configured OpenAI-compatible LLM API → answer + related documents
 ```
 
 ## Stack
@@ -156,7 +156,7 @@ API documentation: `http://127.0.0.1:8000/docs`
 
 ### Smoke-test the running API
 
-With Ollama and FastAPI running, execute this in a separate terminal:
+With FastAPI and your configured local or hosted OpenAI-compatible LLM provider running, execute this in a separate terminal:
 
 ```powershell
 python scripts/smoke_test_api.py
@@ -171,9 +171,10 @@ python scripts/smoke_test_api.py --base-url http://127.0.0.1:8000 --timeout 240
 ```
 
 
-Health check: `http://127.0.0.1:8000/health`
+Health check: `http://127.0.0.1:8000/health`  
+Readiness check: `http://127.0.0.1:8000/ready`
 
-**Backend status:** the chat route expects `app.state.chat_service`; FastAPI lifespan initialization is still being implemented. The widget can be viewed before that work is complete, but chat requests will not work until the service is initialized and the index/provider configuration is available.
+The API loads the saved index, embedding model, retriever, and LLM client during FastAPI lifespan startup. `/health` checks process liveness; `/ready` checks whether the chat service initialized successfully.
 
 ### Run the website
 
