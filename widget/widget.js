@@ -109,7 +109,7 @@
     list.className = "psa-sources";
     const label = document.createElement("div");
     label.className = "psa-sources-label";
-    label.textContent = "منابع پاسخ";
+    label.textContent = "اسناد مرتبط بررسی‌شده";
     list.appendChild(label);
 
     sources.slice(0, 5).forEach((source) => {
@@ -149,7 +149,7 @@
       if (typeof source.source_id === "string" && source.source_id) {
         const tag = document.createElement("span");
         tag.className = "psa-source-tag";
-        tag.textContent = "شناسه منبع: " + source.source_id;
+        tag.textContent = "شناسه سند: " + source.source_id;
         card.appendChild(tag);
       }
       list.appendChild(card);
