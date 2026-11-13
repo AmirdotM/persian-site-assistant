@@ -1,5 +1,7 @@
 """Tests for recursive source-document loading."""
 
+from pathlib import Path
+
 from site_assistant.ingestion.loader import load_local_documents
 
 
@@ -34,3 +36,23 @@ def test_loader_removes_html_script_and_style_content(tmp_path) -> None:
     assert documents[0].title == "صفحه خدمات"
     assert "متن صفحه" in documents[0].text
     assert "alert" not in documents[0].text
+
+
+
+def test_expanded_demo_knowledge_base_contains_all_content_areas() -> None:
+    documents = load_local_documents(Path("data/raw/demo_company"))
+    source_ids = {document.source_id for document in documents}
+
+    expected_source_ids = {
+        "website-delivery",
+        "ecommerce-solutions",
+        "internal-tools",
+        "security-and-privacy",
+        "support-and-handover",
+        "project-scoping-and-estimation",
+        "projects/knowledge-assistant",
+    }
+
+    assert expected_source_ids.issubset(source_ids)
+    assert len(documents) >= 14
+    assert all(document.text.strip() for document in documents)
