@@ -154,6 +154,23 @@ uvicorn site_assistant.main:app --reload --app-dir src
 
 API documentation: `http://127.0.0.1:8000/docs`
 
+### Smoke-test the running API
+
+With Ollama and FastAPI running, execute this in a separate terminal:
+
+```powershell
+python scripts/smoke_test_api.py
+```
+
+The script checks `/health` and `/ready`, then sends a supported Persian company question and an unsupported question to `POST /api/v1/chat`. It validates the HTTP response structure and saves the full answers as UTF-8 JSON to `data/test_output/chat_smoke_test.json`. Open that report in VS Code to inspect Persian text without relying on terminal font/encoding behavior. Review the unsupported-question answer manually; the script does not claim to score semantic correctness.
+
+You can override the API URL or timeout:
+
+```powershell
+python scripts/smoke_test_api.py --base-url http://127.0.0.1:8000 --timeout 240
+```
+
+
 Health check: `http://127.0.0.1:8000/health`
 
 **Backend status:** the chat route expects `app.state.chat_service`; FastAPI lifespan initialization is still being implemented. The widget can be viewed before that work is complete, but chat requests will not work until the service is initialized and the index/provider configuration is available.
