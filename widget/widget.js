@@ -3,7 +3,12 @@
   const script = document.currentScript;
   if (document.getElementById("psa-chat-launcher")) return;
 
-  const apiBase = (script && script.dataset.apiUrl ? script.dataset.apiUrl : "http://127.0.0.1:8000").replace(/\/$/, "");
+  const configuredApiBase = script && script.dataset.apiUrl ? script.dataset.apiUrl.trim() : "";
+  const apiBase = (
+    configuredApiBase && configuredApiBase !== "__CHAT_API_URL__"
+      ? configuredApiBase
+      : "http://127.0.0.1:8000"
+  ).replace(/\/$/, "");
   const chatUrl = apiBase + "/api/v1/chat";
 
   // Load the widget stylesheet relative to this script, so the embed stays portable.
