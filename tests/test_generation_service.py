@@ -60,12 +60,13 @@ def test_answer_removes_legacy_markers_and_deduplicates_sources() -> None:
         _hit("services:1", "services", "خدمات", "فروشگاه اینترنتی"),
         _hit("faq:0", "faq", "پرسش‌های متداول", "ساعات کاری"),
     ]
-    llm = FakeLLM("طراحی وب‌سایت و فروشگاه اینترنتی خدمات اصلی هستند. [S1] [S2، S3]")
+    llm = FakeLLM("طراحی وب‌سایت و فروشگاه اینترنتی خدمات اصلی هستند. [S1] [S2، S3] [ S۴ ]")
 
     response = asyncio.run(ChatService(FakeRetriever(hits), llm).answer("چه خدماتی دارید؟"))
 
     assert "[S1]" not in response.answer
     assert "[S2" not in response.answer
+    assert "[ S۴ ]" not in response.answer
     assert response.answer == "طراحی وب‌سایت و فروشگاه اینترنتی خدمات اصلی هستند."
     assert [source.source_id for source in response.sources] == ["services", "faq"]
     assert llm.called is True
