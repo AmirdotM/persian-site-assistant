@@ -91,6 +91,14 @@ def test_product_catalog_page_lists_all_eight_recommendable_products() -> None:
     assert "data-product-filter" in page
 
 
+def test_portable_smoke_check_matches_the_complete_html_string() -> None:
+    script = read_project_file("scripts/package_portable.ps1")
+
+    assert "$productPageText = $productPage -join [Environment]::NewLine" in script
+    assert '$productPageText.Contains("RNA-WEB-01")' in script
+    assert '$productPage -notmatch "RNA-WEB-01"' not in script
+
+
 def test_portable_compose_supports_a_custom_frontend_port() -> None:
     compose = read_project_file("deploy/compose.portable.yaml")
     assert '${WEB_PORT:-8080}:80' in compose
