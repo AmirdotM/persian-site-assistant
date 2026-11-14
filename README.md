@@ -323,6 +323,10 @@ These questions exercise the expanded fictional knowledge base. The company, exa
 
 Keep credentials in `.env` or the hosting provider's secret store. Do not commit secrets, private source documents, model files, or generated indexes.
 
+## Presentation walkthrough
+
+See [DEMO_RUNBOOK.md](DEMO_RUNBOOK.md) for a short presentation flow, product recommendation questions, expected product matches, and the technical explanation of the RAG pipeline.
+
 ## Development checks
 
 ```powershell
