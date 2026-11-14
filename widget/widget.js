@@ -3,7 +3,13 @@
   const script = document.currentScript;
   if (document.getElementById("psa-chat-launcher")) return;
 
-  const apiBase = (script && script.dataset.apiUrl ? script.dataset.apiUrl : "http://127.0.0.1:8000").replace(/\/$/, "");
+  const hasApiBaseAttribute = Boolean(script && script.hasAttribute("data-api-url"));
+  const configuredApiBase = hasApiBaseAttribute ? (script.dataset.apiUrl || "").trim() : "";
+  const apiBase = (
+    hasApiBaseAttribute
+      ? configuredApiBase || window.location.origin
+      : "http://127.0.0.1:8000"
+  ).replace(/\/$/, "");
   const chatUrl = apiBase + "/api/v1/chat";
 
   // Load the widget stylesheet relative to this script, so the embed stays portable.
@@ -173,6 +179,13 @@
   });
   panel.querySelector(".psa-close").addEventListener("click", closePanel);
   window.addEventListener("psa:open", openPanel);
+  window.addEventListener("psa:ask", (event) => {
+    const question = event.detail && event.detail.question;
+    if (typeof question !== "string" || !question.trim()) return;
+    openPanel();
+    input.value = question.trim();
+    form.requestSubmit();
+  });
   window.addEventListener("psa:ask", (event) => {
     const question = event.detail && event.detail.question;
     if (typeof question !== "string" || !question.trim()) return;
