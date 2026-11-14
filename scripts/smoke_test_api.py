@@ -225,7 +225,8 @@ def main() -> int:
             f"{source_count} sources, {elapsed} ms)"
         )
         if result["manual_review"]:
-            print("  Manual review required: check that the answer does not invent data.")
+            note = result.get("manual_review_note") or "Review answer quality manually."
+            print(f"  Manual review required: {note}")
 
         for error in result.get("errors", []):
             print(f"  - {error}")
