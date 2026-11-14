@@ -12,7 +12,7 @@ Ollama روی رایانه مقصد لازم نیست. کلید API فقط در 
 
 ## اجرای بسته آماده
 
-1. فایل ZIP را استخراج کنید.
+1. فایل `persian-site-assistant-portable.tar.gz` را استخراج کنید. در ویندوز می‌توانید از دستور `tar -xzf persian-site-assistant-portable.tar.gz` یا ابزار 7-Zip استفاده کنید.
 2. از فایل نمونه تنظیمات، فایل محلی بسازید:
 
 PowerShell:
