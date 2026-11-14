@@ -89,3 +89,22 @@ def test_loader_strips_markdown_syntax_from_source_text(tmp_path) -> None:
     assert "**" not in document.text
     assert "https://example.test" not in document.text
     assert not document.text.startswith("#")
+
+
+
+def test_loader_converts_markdown_table_rows_to_plain_text(tmp_path) -> None:
+    document_path = tmp_path / "catalog.md"
+    document_path.write_text(
+        "# کاتالوگ\n\n"
+        "| شناسه | محصول | قیمت |\n"
+        "|---|---|---|\n"
+        "| RNA-01 | وب‌نما | ۲۰ تا ۳۰ میلیون تومان |\n",
+        encoding="utf-8",
+    )
+
+    document = load_local_documents(tmp_path)[0]
+
+    assert "RNA-01" in document.text
+    assert "وب‌نما" in document.text
+    assert "۲۰ تا ۳۰ میلیون تومان" in document.text
+    assert "|" not in document.text
