@@ -186,13 +186,6 @@
     input.value = question.trim();
     form.requestSubmit();
   });
-  window.addEventListener("psa:ask", (event) => {
-    const question = event.detail && event.detail.question;
-    if (typeof question !== "string" || !question.trim()) return;
-    openPanel();
-    input.value = question.trim();
-    form.requestSubmit();
-  });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !panel.hidden) closePanel();
   });
