@@ -1,9 +1,9 @@
 """Static checks for the portable Docker deployment contract."""
 
-from pathlib import Path
+import pathlib
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 def read_project_file(relative_path: str) -> str:
