@@ -182,7 +182,7 @@ With your configured local or hosted LLM provider and FastAPI running, execute t
 python scripts/smoke_test_api.py
 ```
 
-The script checks `/health` and `/ready`, then sends a supported Persian company question and an unsupported question to `POST /api/v1/chat`. It checks a known company question, a product-recommendation scenario, and an unsupported question. The script validates the HTTP response structure and saves the full answers as UTF-8 JSON to `data/test_output/chat_smoke_test.json`. Review the recommendation and abstention answers manually; the script does not score semantic quality. Open that report in VS Code to inspect Persian text without relying on terminal font/encoding behavior. Review the unsupported-question answer manually; the script does not claim to score semantic correctness.
+The script checks `/health` and `/ready`, then sends three Persian questions to `POST /api/v1/chat`: a known company question, a product-recommendation scenario, and an unsupported question. The script validates the HTTP response structure and saves the full answers as UTF-8 JSON to `data/test_output/chat_smoke_test.json`. Review the recommendation and abstention answers manually; the script validates HTTP/schema behavior but does not score semantic quality. Open the report in VS Code to inspect Persian text without relying on terminal font/encoding behavior.
 
 You can override the API URL or timeout:
 
