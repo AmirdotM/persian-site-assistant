@@ -2,24 +2,26 @@
 
 Persian-first website support assistant using retrieval-augmented generation (RAG).
 
-**Status:** Working local MVP. The offline index build, FastAPI lifespan, RAG chat API, Persian RTL website/widget, health/readiness probes, and automated tests are implemented. Production deployment is not configured yet; review the deployment considerations before exposing it publicly.
+**Status:** Working demo MVP with a portable Docker deployment path. The offline index build, FastAPI RAG API, Persian RTL website/widget, product catalogue, health/readiness probes, and automated tests are implemented. A hosted LLM API is configured at runtime; Ollama is optional for local development.
 
 ## Overview
 
-The repository contains a small Persian RTL company website, an embeddable assistant widget, and a FastAPI backend. The assistant retrieves relevant passages from the local knowledge base, sends that context to a local or hosted OpenAI-compatible LLM, and returns an answer with source references.
+The repository contains a Persian RTL company website, an embeddable assistant widget, a fictional eight-product catalogue, and a FastAPI backend. The assistant retrieves relevant passages from the local knowledge base, sends that context to a local or hosted OpenAI-compatible LLM, and returns an answer with related-document cards.
 
 The sample company, its content, and every showcased project are fictional demonstration material. The showcase examples are illustrative concepts, not claims of completed client work.
 
 ## Demo website
 
-The website has four pages:
+The website has six pages:
 
 - Home: introduction and summary of the company's capabilities.
 - Services: scope and details for each service.
+- Products: eight searchable fictional software products with demo-only price ranges.
+- Solutions: four customer scenarios showing how product recommendations are made.
 - Showcase: illustrative corporate website, online store, operations dashboard, and knowledge assistant scenarios.
 - Contact and FAQ: sample contact details, working hours, and common questions.
 
-All pages load the same chat widget from `widget/widget.js`. The widget uses the existing `POST /api/v1/chat` API contract and displays answer source cards when the API returns them.
+All pages load the same chat widget from `widget/widget.js`. Product and solution pages can send prefilled questions directly to the assistant. The widget displays related source-document cards; these are retrieval context, not sentence-level citations.
 
 ## Architecture
 
@@ -30,8 +32,8 @@ Markdown / HTML / TXT → loader → normalization → chunks
     → data/index/vector_store.npz + vector_store.json
 
 Application serving (run for website visitors)
-Browser widget → FastAPI → query embedding → retrieval
-    → grounded prompt → configured LLM → answer + sources
+Browser widget → Nginx reverse proxy → FastAPI → query embedding → retrieval
+    → grounded prompt → configured LLM API → answer + related documents
 ```
 
 ## Stack
@@ -47,12 +49,17 @@ Browser widget → FastAPI → query embedding → retrieval
 
 ```text
 .
-├── data/raw/demo_company/       # Fictional company knowledge base
-│   └── projects/                # Showcase scenario documents
+├── data/raw/demo_company/       # Fictional company and product knowledge base
+│   ├── products/                 # Eight product sheets and selection guide
+│   └── projects/                 # Showcase scenario documents
 ├── data/index/                  # Generated index (not committed)
 ├── website/                     # Four-page Persian RTL company site
 │   └── assets/
 ├── widget/                      # Embeddable chat widget and isolated demo
+├── docker/                      # API, Nginx and frontend Dockerfiles/config
+├── deploy/                      # Compose file for prebuilt portable images
+├── compose.yaml                 # Build and run both containers
+├── README_PORTABLE.md           # Destination-system handover guide
 ├── scripts/build_index.py       # Offline index-building entry point
 ├── scripts/download_embedding_model.py
 ├── src/site_assistant/
@@ -155,7 +162,7 @@ LLM_MODEL=your-local-model-tag
 LLM_TIMEOUT_SECONDS=120
 ```
 
-For a hosted OpenAI-compatible provider, set its API key and model, plus its base URL when required. Keep provider credentials in the backend environment; never place them in website or widget JavaScript.
+For a hosted OpenAI-compatible provider, set its API key and model, plus its base URL when required. For example, a Groq configuration uses `LLM_BASE_URL=https://api.groq.com/openai/v1`. Use the exact model ID available to your account. Keep provider credentials in the backend environment; never place them in website or widget JavaScript. For Docker, use a hosted endpoint rather than a host-local Ollama URL.
 
 ### Run the API
 
@@ -194,11 +201,31 @@ Readiness check: `http://127.0.0.1:8000/ready`
 - LLM-provider API failures are returned as a generic `502` response. The backend logs the request ID and error type without returning provider internals to the browser.
 - The API accepts questions up to 4,000 characters and rejects empty or whitespace-only messages.
 
-### Deployment considerations
+### Run both containers with Docker Compose
 
-This repository currently has no Docker or hosting-provider deployment configuration. For a hosted static website, set `data-api-url` on the widget script in each website page to the public HTTPS API base URL, and set backend `CORS_ORIGINS` to the exact website origin(s). The deployment must also provide the generated vector index at `data/index/` and the configured embedding model. Build the index as part of the deployment/build process; do not expect the API to create it on startup.
+After the embedding model is downloaded and the local vector index has been built, configure a hosted LLM provider in `.env`. Then run:
 
-This is an employer-demo MVP, not an unrestricted public service. Before public exposure, put the API behind HTTPS and configure platform-level access controls or rate limits. There is currently no user authentication or distributed rate limiter.
+```powershell
+docker compose up --build -d
+```
+
+Open `http://localhost:8080`. Nginx serves the website and proxies `/api/v1/chat`, health checks and `/docs` to FastAPI. The API image includes the E5 model, source documents and vector index. The destination system does not need Python, Sentence Transformers, PyTorch, or Ollama installed—only Docker and internet access for the LLM API.
+
+### Build an offline portable handover
+
+On Windows with Docker Desktop using Linux containers, run:
+
+```powershell
+.\\scripts\\package_portable.ps1
+```
+
+The script rebuilds the vector index from the current knowledge base, builds both images, exports them, and creates:
+
+`release/persian-site-assistant-portable.tar.gz`
+
+The archive contains prebuilt API and web images plus Compose configuration and setup instructions. It includes the E5 model and vector index inside the API image. It deliberately excludes `.env` and API credentials; configure a separate key on the destination system. See `README_PORTABLE.md` for the handover steps.
+
+This is an employer-demo MVP, not an unrestricted public service. It has no user authentication or distributed rate limiter. Do not expose the API to the public internet without additional access controls and rate limits.
 
 ### Run the website
 
@@ -208,7 +235,7 @@ From the repository root, in a second terminal:
 python -m http.server 5500
 ```
 
-Open the full company website:
+Open the full company website (including the new products and solutions pages):
 
 `http://127.0.0.1:5500/website/`
 
@@ -257,6 +284,14 @@ These questions exercise the expanded fictional knowledge base. The company, exa
 - وقتی سند جدیدی اضافه می‌شود، چطور وارد جست‌وجو می‌شود؟
 - چرا ممکن است دستیار پاسخ یک پرسش را نداند؟
 - آیا گفت‌وگوها در پایگاه داده ذخیره می‌شوند؟
+
+### Product recommendation and comparison
+- برای فروشگاه اینترنتی با حدود ۱۵۰ محصول و بودجه ۵۰ تا ۶۵ میلیون تومان چه محصولی مناسب است؟
+- فروشگاه فعلی داریم و فقط مدیریت موجودی و ورود و خروج کالا لازم داریم؛ چه پیشنهادی دارید؟
+- تفاوت پیگیر و جریان‌کار چیست؟
+- برای پاسخ‌گویی از روی صدها فایل PDF چه محصولی مناسب است؟
+- برای آموزشگاهی با چند مدرس و رزرو نوبت چه راهکاری پیشنهاد می‌کنید؟
+- هشت محصول نمایشی را بر اساس کاربرد و بازه قیمت مقایسه کن.
 
 ### Questions that should not produce invented facts
 - نام مدیرعامل شرکت چیست؟
