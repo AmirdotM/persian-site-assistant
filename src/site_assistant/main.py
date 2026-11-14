@@ -62,6 +62,7 @@ app = FastAPI(
     title=settings.app_name,
     version=__version__,
     description="Persian-first website assistant API powered by retrieval-augmented generation.",
+    lifespan=lifespan,
     docs_url=None if settings.public_demo_mode else "/docs",
     redoc_url=None if settings.public_demo_mode else "/redoc",
     openapi_url=None if settings.public_demo_mode else "/openapi.json",
