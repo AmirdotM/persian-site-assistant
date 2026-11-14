@@ -1,7 +1,8 @@
 """Start a protected, Docker-free public demo using a Cloudflare Quick Tunnel.
 
-Run this file through scripts/start_public_demo.ps1 on Windows, or directly with
-the project's virtual-environment Python interpreter.
+Run with the project's virtual-environment Python interpreter:
+
+    python scripts/run_public_demo.py
 """
 
 from __future__ import annotations
@@ -86,7 +87,10 @@ def prompt_allowed_emails() -> list[str]:
         emails = [item.strip().lower() for item in raw_value.split(",") if item.strip()]
         if emails and all(EMAIL_PATTERN.fullmatch(email) for email in emails):
             return emails
-        print("Enter at least one valid email address. No public unauthenticated mode is offered.")
+        print(
+            "Enter at least one valid email address. "
+            "No public unauthenticated mode is offered."
+        )
 
 
 def ensure_port_is_free(host: str, port: int) -> None:
