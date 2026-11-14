@@ -135,7 +135,8 @@ try {
     }
 
     $productPage = docker compose @composeArgs exec -T web wget -qO- http://127.0.0.1/products.html
-    if ($LASTEXITCODE -ne 0 -or $productPage -notmatch "RNA-WEB-01") {
+    $productPageText = $productPage -join [Environment]::NewLine
+    if ($LASTEXITCODE -ne 0 -or -not $productPageText.Contains("RNA-WEB-01")) {
         throw "The product catalogue page did not pass its frontend check."
     }
 
