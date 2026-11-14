@@ -182,7 +182,7 @@ With your configured local or hosted LLM provider and FastAPI running, execute t
 python scripts/smoke_test_api.py
 ```
 
-The script checks `/health` and `/ready`, then sends a supported Persian company question and an unsupported question to `POST /api/v1/chat`. It validates the HTTP response structure and saves the full answers as UTF-8 JSON to `data/test_output/chat_smoke_test.json`. Open that report in VS Code to inspect Persian text without relying on terminal font/encoding behavior. Review the unsupported-question answer manually; the script does not claim to score semantic correctness.
+The script checks `/health` and `/ready`, then sends a supported Persian company question and an unsupported question to `POST /api/v1/chat`. It checks a known company question, a product-recommendation scenario, and an unsupported question. The script validates the HTTP response structure and saves the full answers as UTF-8 JSON to `data/test_output/chat_smoke_test.json`. Review the recommendation and abstention answers manually; the script does not score semantic quality. Open that report in VS Code to inspect Persian text without relying on terminal font/encoding behavior. Review the unsupported-question answer manually; the script does not claim to score semantic correctness.
 
 You can override the API URL or timeout:
 
@@ -221,7 +221,7 @@ On Windows with Docker Desktop using Linux containers, run:
 .\\scripts\\package_portable.ps1
 ```
 
-The script rebuilds the vector index from the current knowledge base, builds both images, exports them, and creates:
+The script checks the E5 model assets and API configuration, rebuilds the vector index from the current knowledge base, validates Compose, builds both images, starts an isolated preflight stack, verifies API readiness plus Nginx proxy and product-page delivery, then exports the images and creates:
 
 `release/persian-site-assistant-portable.tar.gz`
 
