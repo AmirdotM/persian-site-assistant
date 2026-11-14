@@ -39,7 +39,7 @@ def test_portable_compose_uses_prebuilt_images_without_build_context() -> None:
     assert "persian-site-assistant-web:portable" in compose
     assert "env_file:" in compose
     assert "build:" not in compose
-    assert '"8080:80"' in compose
+    assert '${WEB_PORT:-8080}:80' in compose
 
 
 def test_portable_packager_exports_images_but_not_local_env_file() -> None:
