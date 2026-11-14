@@ -188,6 +188,8 @@ You can override the API URL or timeout:
 
 ```powershell
 python scripts/smoke_test_api.py --base-url http://127.0.0.1:8000 --timeout 240
+# When using Docker Compose, the same API is available through Nginx:
+python scripts/smoke_test_api.py --base-url http://127.0.0.1:8080 --timeout 240
 ```
 
 
