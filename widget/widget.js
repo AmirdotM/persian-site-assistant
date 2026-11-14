@@ -73,9 +73,9 @@
     const wrap = document.createElement("div");
     wrap.className = "psa-suggestions";
     [
-      "چه خدماتی ارائه می‌دهید؟",
-      "هزینه پروژه چگونه مشخص می‌شود؟",
-      "این نمونه‌کارها واقعی هستند؟"
+      "برای فروشگاه ۱۵۰ محصولی با بودجه ۵۰ تا ۶۵ میلیون تومان چه پیشنهادی دارید؟",
+      "تفاوت پیگیر و جریان‌کار چیست؟",
+      "برای جست‌وجو در اسناد PDF چه محصولی دارید؟"
     ].forEach((question) => {
       const button = document.createElement("button");
       button.type = "button";
@@ -173,6 +173,13 @@
   });
   panel.querySelector(".psa-close").addEventListener("click", closePanel);
   window.addEventListener("psa:open", openPanel);
+  window.addEventListener("psa:ask", (event) => {
+    const question = event.detail && event.detail.question;
+    if (typeof question !== "string" || !question.trim()) return;
+    openPanel();
+    input.value = question.trim();
+    form.requestSubmit();
+  });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !panel.hidden) closePanel();
   });
@@ -222,6 +229,6 @@
     }
   });
 
-  addMessage("می‌توانم درباره خدمات، روند اجرای پروژه و نمونه‌های نمایشی راهنمایی کنم.", "assistant");
+  addMessage("می‌توانم درباره محصولات، مقایسه راهکارها، خدمات و سناریوهای نمایشی راهنمایی کنم.", "assistant");
   addSuggestions();
 })();
