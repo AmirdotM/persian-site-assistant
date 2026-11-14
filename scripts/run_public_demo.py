@@ -221,12 +221,11 @@ def run() -> int:
             errors="replace",
             bufsize=1,
         )
-        output_thread = threading.Thread(
+        threading.Thread(
             target=forward_tunnel_output,
             args=(tunnel_process, allowed_emails),
             daemon=True,
-        )
-        output_thread.start()
+        ).start()
 
         while api_process.poll() is None and tunnel_process.poll() is None:
             time.sleep(0.5)
