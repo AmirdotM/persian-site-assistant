@@ -89,3 +89,11 @@ def test_product_catalog_page_lists_all_eight_recommendable_products() -> None:
 def test_portable_compose_supports_a_custom_frontend_port() -> None:
     compose = read_project_file("deploy/compose.portable.yaml")
     assert '${WEB_PORT:-8080}:80' in compose
+
+
+
+def test_portable_launcher_reports_the_configured_web_port() -> None:
+    script = read_project_file("scripts/start_portable.ps1")
+
+    assert 'Select-String -Path ".env" -Pattern "^\\s*WEB_PORT' in script
+    assert 'Open http://localhost:$webPort' in script
