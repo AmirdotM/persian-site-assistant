@@ -2,7 +2,7 @@
 
 Persian-first website support assistant using retrieval-augmented generation (RAG).
 
-**Status:** Working demo MVP with a portable Docker deployment path. The offline index build, FastAPI RAG API, Persian RTL website/widget, product catalogue, health/readiness probes, and automated tests are implemented. A hosted LLM API is configured at runtime; Ollama is optional for local development.
+**Status:** Working demo MVP with both a native Python public-demo launcher and a portable Docker deployment path. The offline index build, FastAPI RAG API, Persian RTL website/widget, product catalogue, health/readiness probes, and automated tests are implemented. A hosted LLM API is configured at runtime; Ollama is optional for local development.
 
 ## Overview
 
@@ -32,7 +32,7 @@ Markdown / HTML / TXT → loader → normalization → chunks
     → data/index/vector_store.npz + vector_store.json
 
 Application serving (run for website visitors)
-Browser widget → Nginx reverse proxy → FastAPI → query embedding → retrieval
+Browser widget → same-origin FastAPI static serving (native) or Nginx (Docker) → query embedding → retrieval
     → grounded prompt → configured LLM API → answer + related documents
 ```
 
@@ -61,6 +61,7 @@ Browser widget → Nginx reverse proxy → FastAPI → query embedding → retri
 ├── compose.yaml                 # Build and run both containers
 ├── README_PORTABLE.md           # Destination-system handover guide
 ├── scripts/build_index.py       # Offline index-building entry point
+├── scripts/run_public_demo.py   # Start a protected, Docker-free public demo
 ├── scripts/download_embedding_model.py
 ├── src/site_assistant/
 │   ├── api/
@@ -203,6 +204,35 @@ Readiness check: `http://127.0.0.1:8000/ready`
 - LLM-provider API failures are returned as a generic `502` response. The backend logs the request ID and error type without returning provider internals to the browser.
 - The API accepts questions up to 4,000 characters and rejects empty or whitespace-only messages.
 
+### Share a protected public demo without Docker
+
+For a temporary employer preview, you can run the website, API and Cloudflare Quick Tunnel from one command. Docker is not used by this path.
+
+One-time prerequisites:
+- Install `cloudflared` on Windows and make sure `cloudflared.exe` is on `PATH`. Use the [official Cloudflare download instructions](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/).
+- Configure `.env` with `LLM_API_KEY` and `LLM_MODEL`.
+- Download the local E5 model and build `data/index/vector_store.npz` plus `vector_store.json`.
+
+From the project root, run:
+
+```powershell
+.\\.venv\\Scripts\\python.exe .\\scripts\\run_public_demo.py
+```
+
+The launcher asks for one or more allowed visitor email addresses, starts FastAPI on `127.0.0.1:8765`, waits for the RAG model to become ready, then starts a Cloudflare Quick Tunnel. It prints a temporary `trycloudflare.com` URL. Visitors must enter an allowed email address and verify the one-time PIN Cloudflare sends them.
+
+Public-demo safeguards:
+- FastAPI binds to loopback only; no inbound Windows firewall port is opened.
+- Cloudflare email verification restricts access to the public URL.
+- Chat requests are limited to 12 per visitor per rolling minute.
+- Swagger, ReDoc and the OpenAPI schema are disabled in public-demo mode.
+- Browser security headers are set, and the widget automatically uses the same-origin API.
+- The LLM provider key stays in the local `.env` file and is never sent to the browser.
+
+Keep the terminal, PC, network connection and any local LLM service running during the demo. Press `Ctrl+C` in the launcher terminal to stop both the tunnel and API. A Quick Tunnel is temporary: its hostname changes when restarted, and it is intended for testing rather than production. Do not send sensitive personal or business data through this demo.
+
+See [Cloudflare Quick Tunnels](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/) for current features and limitations.
+
 ### Run both containers with Docker Compose
 
 After the embedding model is downloaded and the local vector index has been built, configure a hosted LLM provider in `.env`. Then run:
@@ -227,7 +257,7 @@ The script checks the E5 model assets and API configuration, rebuilds the vector
 
 The archive contains prebuilt API and web images plus Compose configuration and setup instructions. It includes the E5 model and vector index inside the API image. It deliberately excludes `.env` and API credentials; configure a separate key on the destination system. See `README_PORTABLE.md` for the handover steps.
 
-This is an employer-demo MVP, not an unrestricted public service. It has no user authentication or distributed rate limiter. Do not expose the API to the public internet without additional access controls and rate limits.
+The Docker deployment is an employer-demo MVP and does not include application authentication or rate limiting. The native public-demo launcher adds Cloudflare email verification and an in-memory chat rate limit, but Quick Tunnels are temporary preview infrastructure, not production hosting. Do not expose either deployment as a permanent public service without a dedicated security and operations review.
 
 ### Run the website
 
