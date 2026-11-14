@@ -26,10 +26,30 @@ if ($dockerOs -ne "linux") {
     throw "Switch Docker Desktop to Linux containers before building this package."
 }
 
-Write-Host "Rebuilding the vector index from the current knowledge base..."
-python "scripts/build_index.py"
-if ($LASTEXITCODE -ne 0) {
-    throw "Index build failed. Fix the error before packaging."
+Write-Host "Rebuilding the vector index from the current knowledge base using the bundled local E5 model..."
+$previousEmbeddingModel = $env:EMBEDDING_MODEL
+$previousEmbeddingDevice = $env:EMBEDDING_DEVICE
+try {
+    $env:EMBEDDING_MODEL = "./models/multilingual-e5-small"
+    $env:EMBEDDING_DEVICE = "cpu"
+    python "scripts/build_index.py"
+    if ($LASTEXITCODE -ne 0) {
+        throw "Index build failed. Fix the error before packaging."
+    }
+}
+finally {
+    if ($null -eq $previousEmbeddingModel) {
+        Remove-Item Env:EMBEDDING_MODEL -ErrorAction SilentlyContinue
+    }
+    else {
+        $env:EMBEDDING_MODEL = $previousEmbeddingModel
+    }
+    if ($null -eq $previousEmbeddingDevice) {
+        Remove-Item Env:EMBEDDING_DEVICE -ErrorAction SilentlyContinue
+    }
+    else {
+        $env:EMBEDDING_DEVICE = $previousEmbeddingDevice
+    }
 }
 
 Write-Host "Building the API and website images..."
