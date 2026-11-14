@@ -19,10 +19,10 @@ SOURCE_ROOT = Path(__file__).resolve().parents[1] / "src"
 if str(SOURCE_ROOT) not in sys.path:
     sys.path.insert(0, str(SOURCE_ROOT))
 
-from site_assistant.config import settings
-from site_assistant.ingestion.pipeline import build_chunks
-from site_assistant.retrieval.embeddings import E5Embedder
-from site_assistant.retrieval.vector_store import NumpyVectorStore
+from site_assistant.config import settings  # noqa: E402
+from site_assistant.ingestion.pipeline import build_chunks  # noqa: E402
+from site_assistant.retrieval.embeddings import E5Embedder  # noqa: E402
+from site_assistant.retrieval.vector_store import NumpyVectorStore  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
