@@ -1,0 +1,39 @@
+services:
+  api:
+    image: persian-site-assistant-api:portable
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    env_file:
+      - .env
+    environment:
+      APP_ENV: production
+      DATA_DIR: /app/data
+      EMBEDDING_MODEL: /app/models/multilingual-e5-small
+      EMBEDDING_DEVICE: cpu
+      CORS_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
+    expose:
+      - "8000"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=5)"
+      interval: 15s
+      timeout: 8s
+      retries: 12
+      start_period: 180s
+
+  web:
+    image: persian-site-assistant-web:portable
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    restart: unless-stopped

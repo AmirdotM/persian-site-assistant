@@ -15,4 +15,6 @@ async def chat(payload: ChatRequest, request: Request) -> ChatResponse:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Chat service is unavailable.",
         )
-    return await service.answer(payload.message, session_id=payload.session_id)
+
+    response = await service.answer(payload.message, session_id=payload.session_id)
+    return response.model_copy(update={"request_id": request.state.request_id})

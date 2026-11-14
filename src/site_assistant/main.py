@@ -1,25 +1,14 @@
-"""FastAPI application entry point.
+"""FastAPI application entry point and runtime lifecycle."""
 
-TODO: Initialize and release the RAG services through the FastAPI lifespan.
-See IMPLEMENTATION_PLAN.md for the full acceptance criteria.
-
-Startup checklist:
-- Load and validate the persisted vector store from the configured index path.
-- Initialize E5Embedder with the same model/device used to build the index.
-- Construct Retriever, LLMClient, and ChatService.
-- Attach the ready service to app.state.chat_service (the chat route reads this).
-- Expose readiness separately from process liveness; a healthy process without an
-  index or provider configuration must not appear chat-ready.
-
-Shutdown checklist:
-- Close the async LLM client cleanly when the application stops.
-- Keep startup failures explicit and actionable; do not silently swallow them.
-"""
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from openai import APIError
 
 from site_assistant import __version__
 from site_assistant.api.routes import router
@@ -30,71 +19,73 @@ from site_assistant.retrieval.embeddings import E5Embedder
 from site_assistant.retrieval.retriever import Retriever
 from site_assistant.retrieval.vector_store import NumpyVectorStore
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-
-    llm_client = None
+    """Load RAG components at startup and release the LLM client at shutdown."""
+    llm_client: LLMClient | None = None
     app.state.chat_service = None
 
     try:
-        # Load vector store
         vector_store = NumpyVectorStore.load(
             settings.data_dir / "index" / "vector_store.npz"
         )
-
-        # Initialize embedder
         embedder = E5Embedder(
             model_name=settings.embedding_model,
             device=settings.embedding_device,
         )
-
-        # Initialize retriever
         retriever = Retriever(
             vector_store=vector_store,
             embedder=embedder,
         )
-
-        # Initialize LLM client
         llm_client = LLMClient()
-
-        # Construct chat service
         app.state.chat_service = ChatService(
             retriever=retriever,
             llm=llm_client,
         )
-
         yield
-
     finally:
-        # Remove the service from application state
         app.state.chat_service = None
-
-        # Close the LLM client if it was successfully initialized
         if llm_client is not None:
             await llm_client.close()
-
-
-
-
-    
-
-
-
-
-
 
 
 app = FastAPI(
     title=settings.app_name,
     version=__version__,
-    description="Persian-first website assistant API. The chat pipeline is under development.",
-    lifespan=lifespan
+    description="Persian-first website assistant API powered by retrieval-augmented generation.",
+    lifespan=lifespan,
 )
 
 
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    """Attach a server-generated ID to each request for support and log correlation."""
+    request_id = uuid4().hex
+    request.state.request_id = request_id
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
 
 
+@app.exception_handler(APIError)
+async def handle_llm_provider_error(request: Request, exc: APIError) -> JSONResponse:
+    """Return a safe, consistent response when the upstream LLM provider fails."""
+    request_id = getattr(request.state, "request_id", None)
+    logger.warning(
+        "LLM provider request failed (request_id=%s, error_type=%s)",
+        request_id,
+        type(exc).__name__,
+    )
+    return JSONResponse(
+        status_code=502,
+        content={
+            "detail": "سرویس تولید پاسخ موقتاً در دسترس نیست. لطفاً کمی بعد دوباره تلاش کنید.",
+            "request_id": request_id,
+        },
+    )
 
 
 app.add_middleware(
@@ -107,22 +98,19 @@ app.add_middleware(
 
 app.include_router(router, prefix=settings.api_prefix)
 
-#health endpoint for local checks and deployment probes
+
 @app.get("/health", tags=["health"])
 async def health() -> dict[str, str]:
-    """Simple health endpoint for local checks and deployment probes."""
+    """Report that the API process is alive."""
     return {"status": "ok", "version": __version__}
-
-#readiness endpoint for external checks of the chat service
-
 
 
 @app.get("/ready", tags=["health"])
-async def ready(request: Request):
+async def ready(request: Request) -> dict[str, str]:
+    """Report whether the RAG chat service completed startup."""
     if getattr(request.app.state, "chat_service", None) is None:
         raise HTTPException(
             status_code=503,
             detail="Chat service is unavailable",
         )
-
     return {"status": "ready", "version": __version__}

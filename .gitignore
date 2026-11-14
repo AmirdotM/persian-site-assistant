@@ -35,3 +35,6 @@ index.npz
 *.npz
 metadata.json
 *.json
+
+# Generated portable release bundle
+release/

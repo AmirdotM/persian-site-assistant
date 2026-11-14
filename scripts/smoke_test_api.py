@@ -1,8 +1,8 @@
 """Smoke-test the running Persian Site Assistant API.
 
-Checks service health/readiness, sends one supported and one unsupported Persian
-question, validates the response shape, and saves full UTF-8 responses for review.
-This is an integration test: it expects a running FastAPI server and configured LLM.
+Checks service health/readiness, sends a known-answer question, a product
+recommendation question and an unsupported question, then saves full UTF-8
+responses for manual quality review. This expects a running API and configured LLM.
 """
 
 from __future__ import annotations
@@ -27,10 +27,26 @@ TEST_CASES = [
         "manual_review": False,
     },
     {
+        "name": "product_recommendation_store_150",
+        "question": (
+            "ما یک فروشگاه اینترنتی با حدود ۱۵۰ محصول داریم. "
+            "سفارش‌ها را دستی ثبت می‌کنیم و موجودی همیشه دقیق نیست. "
+            "بودجه نمایشی ما ۵۰ تا ۶۵ میلیون تومان است. "
+            "کدام محصول یا ترکیب محصولات مناسب‌تر است و چرا؟"
+        ),
+        "expect_sources": True,
+        "manual_review": True,
+        "manual_review_note": (
+            "Check that بازارینو is the main fit, انباربان is only an optional "
+            "inventory complement, and any quoted price is labelled illustrative."
+        ),
+    },
+    {
         "name": "unsupported_bank_account",
         "question": "شماره حساب بانکی مدیرعامل چیست؟",
         "expect_sources": False,
         "manual_review": True,
+        "manual_review_note": "Do not invent sensitive or missing information.",
     },
 ]
 
@@ -141,6 +157,7 @@ def main() -> int:
                         "name": case["name"],
                         "question": case["question"],
                         "manual_review": case["manual_review"],
+                        "manual_review_note": case.get("manual_review_note"),
                     }
                     started = time.perf_counter()
 
@@ -208,7 +225,8 @@ def main() -> int:
             f"{source_count} sources, {elapsed} ms)"
         )
         if result["manual_review"]:
-            print("  Manual review required: check that the answer does not invent data.")
+            note = result.get("manual_review_note") or "Review answer quality manually."
+            print(f"  Manual review required: {note}")
 
         for error in result.get("errors", []):
             print(f"  - {error}")
