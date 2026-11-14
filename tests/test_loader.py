@@ -56,3 +56,26 @@ def test_expanded_demo_knowledge_base_contains_all_content_areas() -> None:
     assert expected_source_ids.issubset(source_ids)
     assert len(documents) >= 14
     assert all(document.text.strip() for document in documents)
+
+
+
+def test_loader_strips_markdown_syntax_from_source_text(tmp_path) -> None:
+    document_path = tmp_path / "guide.md"
+    document_path.write_text(
+        "# راهنمای محصول\n\n"
+        "این **محصول** برای تیم‌ها مناسب است.\n\n"
+        "- مورد اول\n"
+        "- مورد دوم\n\n"
+        "برای [جزئیات بیشتر](https://example.test) مراجعه کنید.\n",
+        encoding="utf-8",
+    )
+
+    document = load_local_documents(tmp_path)[0]
+
+    assert document.title == "راهنمای محصول"
+    assert "محصول" in document.text
+    assert "• مورد اول" in document.text
+    assert "جزئیات بیشتر" in document.text
+    assert "**" not in document.text
+    assert "https://example.test" not in document.text
+    assert not document.text.startswith("#")
