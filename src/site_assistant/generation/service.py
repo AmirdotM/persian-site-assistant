@@ -11,8 +11,8 @@ from site_assistant.schemas import ChatResponse, SourceReference
 # Remove legacy/model-invented inline labels. The UI presents related documents
 # separately, so these labels are redundant and can point to the wrong chunk.
 _INLINE_SOURCE_MARKER = re.compile(
-    r"\\s*\\[\\s*S\\s*[0-9۰-۹٠-٩]+"
-    r"(?:\\s*[,،]\\s*S?\\s*[0-9۰-۹٠-٩]+)*\\s*\\]",
+    r"\s*\[\s*S\s*[0-9۰-۹٠-٩]+"
+    r"(?:\s*[,،]\s*S?\s*[0-9۰-۹٠-٩]+)*\s*\]",
     flags=re.IGNORECASE,
 )
 
@@ -27,8 +27,7 @@ def _make_excerpt(text: str, width: int = 220) -> str:
     compact = " ".join(text.split())
     if len(compact) <= width:
         return compact
-    excerpt = textwrap.shorten(compact, width=width, placeholder="…")
-    return excerpt
+    return textwrap.shorten(compact, width=width, placeholder="…")
 
 
 class ChatService:
