@@ -176,7 +176,7 @@ API documentation: `http://127.0.0.1:8000/docs`
 
 ### Smoke-test the running API
 
-With Ollama and FastAPI running, execute this in a separate terminal:
+With your configured local or hosted LLM provider and FastAPI running, execute this in a separate terminal:
 
 ```powershell
 python scripts/smoke_test_api.py
@@ -211,7 +211,7 @@ docker compose up --build -d
 
 Open `http://localhost:8080`. Nginx serves the website and proxies `/api/v1/chat`, health checks and `/docs` to FastAPI. The API image includes the E5 model, source documents and vector index. The destination system does not need Python, Sentence Transformers, PyTorch, or Ollama installed—only Docker and internet access for the LLM API.
 
-### Build an offline portable handover
+### Build a portable handover bundle
 
 On Windows with Docker Desktop using Linux containers, run:
 
@@ -310,7 +310,8 @@ These questions exercise the expanded fictional knowledge base. The company, exa
 | `CORS_ORIGINS` | Comma-separated allowed website origins; use exact origins when hosted |
 | `LLM_API_KEY` | Provider API key |
 | `LLM_BASE_URL` | OpenAI-compatible API base URL |
-| `LLM_MODEL` | Provider model identifier |\n| `LLM_TIMEOUT_SECONDS` | Timeout for a provider generation request |
+| `LLM_MODEL` | Provider model identifier |
+| `LLM_TIMEOUT_SECONDS` | Timeout for a provider generation request |
 | `EMBEDDING_MODEL` | Embedding model or local model directory |
 | `EMBEDDING_DEVICE` | Embedding device (`cpu` by default) |
 | `RETRIEVAL_TOP_K` | Number of retrieved passages |
