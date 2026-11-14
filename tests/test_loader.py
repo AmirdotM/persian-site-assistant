@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from site_assistant.ingestion.chunker import chunk_text
 from site_assistant.ingestion.loader import load_local_documents
 
 
@@ -108,3 +109,30 @@ def test_loader_converts_markdown_table_rows_to_plain_text(tmp_path) -> None:
     assert "وب‌نما" in document.text
     assert "۲۰ تا ۳۰ میلیون تومان" in document.text
     assert "|" not in document.text
+
+
+
+def test_product_selection_guide_fits_one_retrieval_chunk() -> None:
+    documents = load_local_documents(Path("data/raw/demo_company/products"))
+    guide = next(document for document in documents if document.source_id == "selection-guide")
+
+    chunks = chunk_text(
+        guide.text,
+        source_id=guide.source_id,
+        title=guide.title,
+        max_chars=900,
+        overlap_chars=120,
+    )
+
+    assert len(chunks) == 1
+    for product_id in (
+        "RNA-WEB-01",
+        "RNA-SHOP-02",
+        "RNA-CRM-03",
+        "RNA-FLOW-04",
+        "RNA-STOCK-05",
+        "RNA-INSIGHT-06",
+        "RNA-KNOW-07",
+        "RNA-BOOK-08",
+    ):
+        assert product_id in chunks[0].text
