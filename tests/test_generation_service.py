@@ -79,3 +79,24 @@ def test_no_retrieved_hits_returns_fallback_without_calling_llm() -> None:
     assert response.sources == []
     assert "اطلاعات کافی" in response.answer
     assert llm.called is False
+
+
+
+def test_source_excerpts_are_compact_and_do_not_cut_words() -> None:
+    hits = [
+        _hit(
+            "services:0",
+            "services",
+            "خدمات",
+            "این یک متن طولانی برای بررسی نمایش پیش‌نمایش منبع در کارت‌های رابط کاربری است. " * 8,
+        ),
+    ]
+    llm = FakeLLM("پاسخ بدون ارجاع.")
+
+    response = asyncio.run(ChatService(FakeRetriever(hits), llm).answer("چه خدماتی دارید؟"))
+
+    excerpt = response.sources[0].excerpt
+    assert excerpt is not None
+    assert len(excerpt) <= 220
+    assert excerpt.endswith("…")
+    assert not excerpt.endswith(" ")
