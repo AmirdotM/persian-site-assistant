@@ -20,6 +20,12 @@ if ($LASTEXITCODE -ne 0) {
     throw "Could not load the application images."
 }
 
+$webPort = "8080"
+$portLine = Select-String -Path ".env" -Pattern "^\s*WEB_PORT\s*=\s*\d+\s*$"
+if ($portLine) {
+    $webPort = ($portLine.Line -split "=", 2)[1].Trim()
+}
+
 docker compose up -d
 if ($LASTEXITCODE -ne 0) {
     throw "Docker Compose could not start the application."
@@ -27,5 +33,5 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host ""
 Write-Host "Persian Site Assistant is starting."
-Write-Host "Open http://localhost:8080 in your browser."
+Write-Host "Open http://localhost:$webPort in your browser."
 Write-Host "Use 'docker compose logs -f api' to watch the backend."
