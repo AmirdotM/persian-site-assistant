@@ -51,10 +51,19 @@ def test_expanded_demo_knowledge_base_contains_all_content_areas() -> None:
         "support-and-handover",
         "project-scoping-and-estimation",
         "projects/knowledge-assistant",
+        "products/catalog",
+        "products/webnama",
+        "products/bazarino",
+        "products/paygir",
+        "products/jaryankar",
+        "products/anbarban",
+        "products/didban",
+        "products/daneshyar",
+        "products/nobatyar",
     }
 
     assert expected_source_ids.issubset(source_ids)
-    assert len(documents) >= 14
+    assert len(documents) >= 23
     assert all(document.text.strip() for document in documents)
 
 
