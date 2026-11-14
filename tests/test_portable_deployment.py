@@ -45,6 +45,8 @@ def test_portable_compose_uses_prebuilt_images_without_build_context() -> None:
 def test_portable_packager_exports_images_but_not_local_env_file() -> None:
     script = read_project_file("scripts/package_portable.ps1")
 
+    assert 'EMBEDDING_MODEL = "./models/multilingual-e5-small"' in script
+    assert 'EMBEDDING_DEVICE = "cpu"' in script
     assert "docker image save" in script
     assert "images.tar" in script
     assert "tar -czf" in script
