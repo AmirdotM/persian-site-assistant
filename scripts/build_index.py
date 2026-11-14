@@ -9,7 +9,15 @@ resulting files; it does not rebuild the index on every startup.
 """
 
 import logging
+import sys
 from pathlib import Path
+
+# This script is executed directly, so Python otherwise adds only the
+# scripts/ directory to sys.path. Add src/ to support this repository's
+# src-layout without requiring an editable package installation.
+SOURCE_ROOT = Path(__file__).resolve().parents[1] / "src"
+if str(SOURCE_ROOT) not in sys.path:
+    sys.path.insert(0, str(SOURCE_ROOT))
 
 from site_assistant.config import settings
 from site_assistant.ingestion.pipeline import build_chunks
