@@ -40,7 +40,7 @@ if ($LASTEXITCODE -ne 0) {
 
 $releaseRoot = Join-Path $repoRoot "release"
 $bundleDir = Join-Path $releaseRoot "portable-demo"
-$zipPath = Join-Path $releaseRoot "persian-site-assistant-portable.zip"
+$archivePath = Join-Path $releaseRoot "persian-site-assistant-portable.tar.gz"
 
 if (Test-Path $bundleDir) {
     Remove-Item $bundleDir -Recurse -Force
@@ -58,13 +58,19 @@ Copy-Item ".env.example" (Join-Path $bundleDir ".env.example")
 Copy-Item "README_PORTABLE.md" (Join-Path $bundleDir "README.md")
 Copy-Item "scripts\start_portable.ps1" (Join-Path $bundleDir "START-HERE.ps1")
 
-if (Test-Path $zipPath) {
-    Remove-Item $zipPath -Force
+if (Test-Path $archivePath) {
+    Remove-Item $archivePath -Force
 }
-Compress-Archive -Path (Join-Path $bundleDir "*") -DestinationPath $zipPath -CompressionLevel Optimal
+if (-not (Get-Command tar -ErrorAction SilentlyContinue)) {
+    throw "The tar command was not found. Use an up-to-date Windows 10/11 system or install bsdtar."
+}
+tar -czf $archivePath -C $bundleDir .
+if ($LASTEXITCODE -ne 0) {
+    throw "Could not create the portable tar.gz archive."
+}
 
 Write-Host ""
 Write-Host "Portable package created:"
-Write-Host $zipPath
+Write-Host $archivePath
 Write-Host "The archive contains the app images, website, E5 model, knowledge base and vector index."
 Write-Host "It does not contain your .env or API key. Configure a separate .env on the destination system."
