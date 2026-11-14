@@ -53,3 +53,30 @@ def test_portable_packager_exports_images_but_not_local_env_file() -> None:
     assert 'Copy-Item ".env.example"' in script
     assert 'Copy-Item ".env"' not in script
     assert "start_portable.ps1" in script
+
+
+
+def test_prefilled_assistant_question_handler_is_registered_once() -> None:
+    widget = read_project_file("widget/widget.js")
+
+    assert widget.count('window.addEventListener("psa:ask"') == 1
+
+
+def test_product_catalog_page_lists_all_eight_recommendable_products() -> None:
+    page = read_project_file("website/products.html")
+
+    product_ids = (
+        "RNA-WEB-01",
+        "RNA-SHOP-02",
+        "RNA-CRM-03",
+        "RNA-FLOW-04",
+        "RNA-STOCK-05",
+        "RNA-INSIGHT-06",
+        "RNA-KNOW-07",
+        "RNA-BOOK-08",
+    )
+
+    assert page.count('class="product-card"') == 8
+    assert all(product_id in page for product_id in product_ids)
+    assert "data-product-search" in page
+    assert "data-product-filter" in page
