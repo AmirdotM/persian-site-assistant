@@ -49,7 +49,7 @@ docker compose up -d
 6. سایت را باز کنید:
 
 - وب‌سایت: http://localhost:8080
-- مستندات API: http://localhost:8080/api (فقط مسیر API؛ مستندات Swagger در این استقرار عمومی نشده‌اند)
+- مستندات API: http://localhost:8080/docs
 - سلامت API: http://localhost:8080/health
 - آماده‌بودن دستیار: http://localhost:8080/ready
 
