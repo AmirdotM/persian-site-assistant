@@ -30,23 +30,34 @@ def _markdown_title(text: str, fallback: str) -> str:
 
 def _markdown_to_plain_text(text: str) -> str:
     """Remove presentation syntax while preserving readable document content."""
+    fence = chr(96) * 3
+    tick = chr(96)
     # Keep fenced code content but remove the fence markers.
-    text = re.sub(r"```[\\w-]*\\s*\\n?(.*?)```", r"\\1", text, flags=re.DOTALL)
+    text = re.sub(
+        re.escape(fence) + r"[\w-]*\s*\n?(.*?)" + re.escape(fence),
+        r"\1",
+        text,
+        flags=re.DOTALL,
+    )
     # Keep link and image labels, not their Markdown wrappers or destinations.
-    text = re.sub(r"!\\[([^\\]]*)\\]\\([^)]+\\)", r"\\1", text)
-    text = re.sub(r"\\[([^\\]]+)\\]\\([^)]+\\)", r"\\1", text)
+    text = re.sub(r"!\[([^\]]*)\]\([^)]+\)", r"\1", text)
+    text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
     # Convert headings and list prefixes into plain text.
-    text = re.sub(r"(?m)^\\s{0,3}#{1,6}\\s*", "", text)
-    text = re.sub(r"(?m)^\\s*(?:[-*+] |\\d+[.)] )", "• ", text)
-    text = re.sub(r"(?m)^\\s*>\\s?", "", text)
+    text = re.sub(r"(?m)^\s{0,3}#{1,6}\s*", "", text)
+    text = re.sub(r"(?m)^\s*(?:[-*+] |\d+[.)] )", "• ", text)
+    text = re.sub(r"(?m)^\s*>\s?", "", text)
     # Remove common inline emphasis/code markers.
-    text = re.sub(r"\\*\\*(.*?)\\*\\*", r"\\1", text)
-    text = re.sub(r"__(.*?)__", r"\\1", text)
-    text = re.sub(r"(?<!\\*)\\*([^*\\n]+)\\*(?!\\*)", r"\\1", text)
-    text = re.sub(r"(?<!_)_([^_\\n]+)_(?!_)", r"\\1", text)
-    text = re.sub(r"`([^`]+)`", r"\\1", text)
-    text = re.sub(r"(?m)^\\s*[-_]{3,}\\s*$", "", text)
-    text = re.sub(r"\\n{3,}", "\\n\\n", text)
+    text = re.sub(r"\*\*(.*?)\*\*", r"\1", text)
+    text = re.sub(r"__(.*?)__", r"\1", text)
+    text = re.sub(r"(?<!\*)\*([^*\n]+)\*(?!\*)", r"\1", text)
+    text = re.sub(r"(?<!_)_([^_\n]+)_(?!_)", r"\1", text)
+    text = re.sub(
+        re.escape(tick) + r"([^" + re.escape(tick) + r"]+)" + re.escape(tick),
+        r"\1",
+        text,
+    )
+    text = re.sub(r"(?m)^\s*[-_]{3,}\s*$", "", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
 
 
@@ -65,7 +76,7 @@ def load_local_documents(directory: Path) -> list[SourceDocument]:
             title = soup.title.get_text(" ", strip=True) if soup.title else path.stem
             for node in soup(["script", "style", "noscript"]):
                 node.decompose()
-            raw_text = soup.get_text("\\n", strip=True)
+            raw_text = soup.get_text("\n", strip=True)
         elif suffix == ".md":
             title = _markdown_title(raw_text, path.stem)
             raw_text = _markdown_to_plain_text(raw_text)
