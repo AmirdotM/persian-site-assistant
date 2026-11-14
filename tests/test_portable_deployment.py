@@ -109,3 +109,19 @@ def test_portable_launcher_reports_the_configured_web_port() -> None:
 
     assert 'Select-String -Path ".env" -Pattern "^\\s*WEB_PORT' in script
     assert 'Open http://localhost:$webPort' in script
+
+def test_native_public_demo_uses_loopback_cloudflare_email_gate_and_rate_limit() -> None:
+    runner = read_project_file("scripts/run_public_demo.py")
+    main = read_project_file("src/site_assistant/main.py")
+    routes = read_project_file("src/site_assistant/api/routes.py")
+    widget = read_project_file("widget/widget.js")
+
+    assert '"127.0.0.1"' in runner
+    assert '"--allowed-mail"' in runner
+    assert '"PUBLIC_DEMO_MODE": "true"' in runner
+    assert '"PUBLIC_DEMO_RATE_LIMIT_PER_MINUTE": "12"' in runner
+    assert 'docs_url=None if settings.public_demo_mode else "/docs"' in main
+    assert "settings.public_demo_mode" in routes
+    assert "status.HTTP_429_TOO_MANY_REQUESTS" in routes
+    assert "configuredBaseIsLoopback && !pageIsLocal" in widget
+
