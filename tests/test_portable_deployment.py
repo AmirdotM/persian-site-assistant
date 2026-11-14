@@ -9,6 +9,13 @@ def read_project_file(relative_path: str) -> str:
     return (ROOT / relative_path).read_text(encoding="utf-8")
 
 
+def test_index_builder_bootstraps_the_src_layout() -> None:
+    script = read_project_file("scripts/build_index.py")
+
+    assert 'Path(__file__).resolve().parents[1] / "src"' in script
+    assert "sys.path.insert(0, str(SOURCE_ROOT))" in script
+
+
 def test_backend_image_bundles_model_and_generated_index() -> None:
     dockerfile = read_project_file("docker/backend.Dockerfile")
 
@@ -54,9 +61,8 @@ def test_portable_packager_exports_images_but_not_local_env_file() -> None:
     assert 'Copy-Item ".env"' not in script
     assert "start_portable.ps1" in script
     assert "docker compose @composeArgs up -d" in script
-    assert "healthState -eq \"healthy\"" in script
+    assert 'healthState -eq "healthy"' in script
     assert "wget -qO- http://127.0.0.1/ready" in script
-
 
 
 def test_prefilled_assistant_question_handler_is_registered_once() -> None:
@@ -85,11 +91,9 @@ def test_product_catalog_page_lists_all_eight_recommendable_products() -> None:
     assert "data-product-filter" in page
 
 
-
 def test_portable_compose_supports_a_custom_frontend_port() -> None:
     compose = read_project_file("deploy/compose.portable.yaml")
     assert '${WEB_PORT:-8080}:80' in compose
-
 
 
 def test_portable_launcher_reports_the_configured_web_port() -> None:
