@@ -53,6 +53,9 @@ def test_portable_packager_exports_images_but_not_local_env_file() -> None:
     assert 'Copy-Item ".env.example"' in script
     assert 'Copy-Item ".env"' not in script
     assert "start_portable.ps1" in script
+    assert "docker compose @composeArgs up -d" in script
+    assert "healthState -eq \"healthy\"" in script
+    assert "wget -qO- http://127.0.0.1/ready" in script
 
 
 
@@ -80,3 +83,9 @@ def test_product_catalog_page_lists_all_eight_recommendable_products() -> None:
     assert all(product_id in page for product_id in product_ids)
     assert "data-product-search" in page
     assert "data-product-filter" in page
+
+
+
+def test_portable_compose_supports_a_custom_frontend_port() -> None:
+    compose = read_project_file("deploy/compose.portable.yaml")
+    assert '${WEB_PORT:-8080}:80' in compose
