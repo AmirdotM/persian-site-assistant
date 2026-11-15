@@ -42,7 +42,6 @@ def _markdown_to_plain_text(text: str) -> str:
     # Keep link and image labels, not their Markdown wrappers or destinations.
     text = re.sub(r"!\[([^\]]*)\]\([^)]+\)", r"\1", text)
     text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
-    # Convert Markdown tables to readable lines before removing other syntax.
     # Convert Markdown table rows to compact, readable lines.
     table_lines: list[str] = []
     for line in text.splitlines():
