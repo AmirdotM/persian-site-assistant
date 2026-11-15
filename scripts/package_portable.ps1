@@ -8,8 +8,12 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $repoRoot
 
+$portableVenvPython = Join-Path $repoRoot ".venv-portable\Scripts\python.exe"
 $venvPython = Join-Path $repoRoot ".venv\Scripts\python.exe"
-if (Test-Path -LiteralPath $venvPython -PathType Leaf) {
+if (Test-Path -LiteralPath $portableVenvPython -PathType Leaf) {
+    $pythonExecutable = $portableVenvPython
+}
+elseif (Test-Path -LiteralPath $venvPython -PathType Leaf) {
     $pythonExecutable = $venvPython
 }
 else {
