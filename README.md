@@ -94,21 +94,21 @@ The final hand-off includes two ways to run the same demo:
 
 Build both versions from a Windows development PC with Python 3.12, the local E5 model and index, and Docker Desktop running with Linux containers enabled:
 
-\`\`\`powershell
+```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\package_demo.ps1
-\`\`\`
+```
 
-The script prepares the vector index once, builds and checks the native Windows application, builds and preflights the Docker images, then assembles the complete folder at \`release/demo/\`.
+The script prepares the vector index once, builds and checks the native Windows application, builds and preflights the Docker images, then assembles the complete folder at `release/demo/`.
 
-Copy the entire \`release/demo/\` folder to the USB drive. On the presentation PC, copy it to a local drive and double-click \`START-DEMO.bat\`. Choose native mode or Docker mode from the menu.
+Copy the entire `release/demo/` folder to the USB drive. On the presentation PC, copy it to a local drive and double-click `START-DEMO.bat`. Choose native mode or Docker mode from the menu.
 
 Both options ask for the LLM API key, exact model ID, optional provider base URL, and local web port when they start. The API key is entered through a secure prompt and is not written to the demo folder.
 
 The native option does not require Python, pip, a virtual environment, Docker Desktop, PyTorch, Sentence Transformers, or a model download on the presentation PC. The Docker option requires Docker Desktop with Linux containers. Both options need internet access to the configured LLM provider; the E5 embedding model and retrieval run locally.
 
-The native executable is a Windows x64 build and must be packaged on Windows. The one-folder output must stay together with its \`_internal\`, \`data\`, \`models\`, \`website\`, and \`widget\` folders. Do not copy only the \`.exe\`.
+The native executable is a Windows x64 build and must be packaged on Windows. The one-folder output must stay together with its `_internal`, `data`, `models`, `website`, and `widget` folders. Do not copy only the `.exe`.
 
-The site listens on \`127.0.0.1\` and is intended for a local presentation, not public hosting. The detailed hand-off guide is in [README_PORTABLE.md](README_PORTABLE.md).
+The site listens on `127.0.0.1` and is intended for a local presentation, not public hosting. The detailed hand-off guide is in [README_PORTABLE.md](README_PORTABLE.md).
 
 ## Demo notes
 
