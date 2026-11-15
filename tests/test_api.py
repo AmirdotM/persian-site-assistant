@@ -4,7 +4,6 @@ import httpx
 from fastapi.testclient import TestClient
 from openai import APIConnectionError
 
-from site_assistant.config import settings
 from site_assistant.main import app
 from site_assistant.schemas import ChatResponse
 
