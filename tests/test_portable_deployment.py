@@ -126,7 +126,8 @@ def test_portable_launcher_is_one_command_and_does_not_store_the_api_key() -> No
     assert 'docker compose -p $projectName -f $composeFile down' in script
     assert '$env:LLM_API_KEY = $apiKey' in script
     assert 'Set-Content' not in script
-    assert 'previousEnvironment' not in script
+    assert 'previousEnvironment' in script
+    assert '[Environment]::SetEnvironmentVariable($name, $previousValue, "Process")' in script
 
 def test_widget_uses_the_current_origin_for_same_origin_deployments() -> None:
     widget = read_project_file("widget/widget.js")
