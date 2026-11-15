@@ -10,7 +10,7 @@
   );
   const configuredBaseIsLoopback = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i
     .test(configuredApiBase);
-  // A public deployment must call its own origin, not the visitor's localhost.
+  // Same-origin deployments use the current page origin for API requests.
   const usePageOrigin = hasApiBaseAttribute && (
     !configuredApiBase || (configuredBaseIsLoopback && !pageIsLocal)
   );
