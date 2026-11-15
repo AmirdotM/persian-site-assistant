@@ -38,8 +38,8 @@ goto menu
 :docker
 if not exist "%~dp0docker\images.tar" (
     echo.
-    echo Docker image archive is missing.
-    echo Re-copy the complete demo folder.
+    echo Docker mode is not included in this package.
+    echo Select Native Windows mode to start the demo without Docker.
     pause
     goto menu
 )
