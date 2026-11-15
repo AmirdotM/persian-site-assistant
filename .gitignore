@@ -9,6 +9,7 @@ htmlcov/
 
 # Virtual environments
 .venv/
+.venv-portable/
 venv/
 env/
 
@@ -31,5 +32,6 @@ data/index/**
 .DS_Store
 Thumbs.db
 
-# Generated portable release bundle
+# Local build and generated portable release bundle
+build/
 release/

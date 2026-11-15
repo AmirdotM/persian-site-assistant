@@ -1,10 +1,19 @@
+[CmdletBinding()]
+param(
+    [switch]$SkipIndexBuild
+)
+
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $repoRoot
 
+$portableVenvPython = Join-Path $repoRoot ".venv-portable\Scripts\python.exe"
 $venvPython = Join-Path $repoRoot ".venv\Scripts\python.exe"
-if (Test-Path -LiteralPath $venvPython -PathType Leaf) {
+if (Test-Path -LiteralPath $portableVenvPython -PathType Leaf) {
+    $pythonExecutable = $portableVenvPython
+}
+elseif (Test-Path -LiteralPath $venvPython -PathType Leaf) {
     $pythonExecutable = $venvPython
 }
 else {
@@ -56,30 +65,36 @@ if ($dockerOs -ne "linux") {
     throw "Switch Docker Desktop to Linux containers before building this package."
 }
 
-Write-Host "Rebuilding the vector index from the current knowledge base using the bundled local E5 model..."
-$previousEmbeddingModel = $env:EMBEDDING_MODEL
-$previousEmbeddingDevice = $env:EMBEDDING_DEVICE
-try {
-    $env:EMBEDDING_MODEL = "./models/multilingual-e5-small"
-    $env:EMBEDDING_DEVICE = "cpu"
-    & $pythonExecutable "scripts/build_index.py"
-    if ($LASTEXITCODE -ne 0) {
-        throw "Index build failed. Fix the error before packaging."
-    }
+if ($SkipIndexBuild) {
+    Write-Host "Using the vector index prepared by the native packaging step."
 }
-finally {
-    if ($null -eq $previousEmbeddingModel) {
-        Remove-Item Env:EMBEDDING_MODEL -ErrorAction SilentlyContinue
+else {
+    Write-Host "Rebuilding the vector index from the current knowledge base using the bundled local E5 model..."
+    $previousEmbeddingModel = $env:EMBEDDING_MODEL
+    $previousEmbeddingDevice = $env:EMBEDDING_DEVICE
+    try {
+        $env:EMBEDDING_MODEL = "./models/multilingual-e5-small"
+        $env:EMBEDDING_DEVICE = "cpu"
+        & $pythonExecutable "scripts/build_index.py"
+        if ($LASTEXITCODE -ne 0) {
+            throw "Index build failed. Fix the error before packaging."
+        }
     }
-    else {
-        $env:EMBEDDING_MODEL = $previousEmbeddingModel
+    finally {
+        if ($null -eq $previousEmbeddingModel) {
+            Remove-Item Env:EMBEDDING_MODEL -ErrorAction SilentlyContinue
+        }
+        else {
+            $env:EMBEDDING_MODEL = $previousEmbeddingModel
+        }
+        if ($null -eq $previousEmbeddingDevice) {
+            Remove-Item Env:EMBEDDING_DEVICE -ErrorAction SilentlyContinue
+        }
+        else {
+            $env:EMBEDDING_DEVICE = $previousEmbeddingDevice
+        }
     }
-    if ($null -eq $previousEmbeddingDevice) {
-        Remove-Item Env:EMBEDDING_DEVICE -ErrorAction SilentlyContinue
-    }
-    else {
-        $env:EMBEDDING_DEVICE = $previousEmbeddingDevice
-    }
+    
 }
 
 Write-Host "Validating Docker Compose configuration..."

@@ -87,37 +87,28 @@ ruff check .
 
 ## Prepare the USB demo
 
-The portable handover is a pair of prebuilt Docker images. The API image already contains Python, the application dependencies, the E5 model, the knowledge-base documents, and the vector index. The web image contains the website, widget, and Nginx.
+The final hand-off includes two ways to run the same demo:
 
-On the development PC, make sure the local E5 model and generated index are ready. The packaging preflight uses temporary placeholder LLM settings and does not make a provider request, so you do not need to put an API key in the build environment. Then run:
+- **Native Windows:** a one-folder executable containing Python and the application dependencies. No Python installation or Docker is needed on the presentation PC.
+- **Docker:** the prebuilt API and website images. Docker Desktop is required on the presentation PC.
 
-```powershell
-.\scripts\package_portable.ps1
-```
-
-The packaging script rebuilds the index, builds both images, starts them in a separate preflight project, checks API readiness and website delivery, and exports the bundle to:
-
-`release/persian-site-assistant-portable.tar.gz`
-
-It also creates the extracted folder at `release/portable-demo/`. Copy that folder to the USB drive. On the presentation PC, copy it to a local folder before running it.
-
-The presentation PC needs:
-
-- Windows 10/11 x64.
-- Docker Desktop running with Linux containers enabled.
-- Internet access to the configured LLM provider.
-
-It does **not** need Python, pip, a virtual environment, PyTorch, Sentence Transformers, the E5 model download, an index build, Ollama, or cloudflared.
-
-Open PowerShell in the copied folder and run:
+Build both versions from a Windows development PC with Python 3.12, the local E5 model and index, and Docker Desktop running with Linux containers enabled:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\START-HERE.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\package_demo.ps1
 ```
 
-The launcher asks for the LLM API key, model ID, optional provider base URL, and local web port. The API key is entered through a secure prompt and is not written into a file on the USB drive. The launcher loads the images, starts the containers, waits for `/ready`, opens the site, and stops the containers when you press Enter or Ctrl+C.
+The script prepares the vector index once, builds and checks the native Windows application, builds and preflights the Docker images, then assembles the complete folder at `release/demo/`.
 
-The site is bound to `127.0.0.1`; it is intended for a local presentation, not public hosting. More detail is in [README_PORTABLE.md](README_PORTABLE.md).
+Copy the entire `release/demo/` folder to the USB drive. On the presentation PC, copy it to a local drive and double-click `START-DEMO.bat`. Choose native mode or Docker mode from the menu.
+
+Both options ask for the LLM API key, exact model ID, optional provider base URL, and local web port when they start. The API key is entered through a secure prompt and is not written to the demo folder.
+
+The native option does not require Python, pip, a virtual environment, Docker Desktop, PyTorch, Sentence Transformers, or a model download on the presentation PC. The Docker option requires Docker Desktop with Linux containers. Both options need internet access to the configured LLM provider; the E5 embedding model and retrieval run locally.
+
+The native executable is a Windows x64 build and must be packaged on Windows. The one-folder output must stay together with its `_internal`, `data`, `models`, `website`, and `widget` folders. Do not copy only the `.exe`.
+
+The site listens on `127.0.0.1` and is intended for a local presentation, not public hosting. The detailed hand-off guide is in [README_PORTABLE.md](README_PORTABLE.md).
 
 ## Demo notes
 
