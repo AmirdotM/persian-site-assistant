@@ -5,10 +5,21 @@
 
   const hasApiBaseAttribute = Boolean(script && script.hasAttribute("data-api-url"));
   const configuredApiBase = hasApiBaseAttribute ? (script.dataset.apiUrl || "").trim() : "";
+  const pageIsLocal = ["localhost", "127.0.0.1", "::1"].includes(
+    window.location.hostname.toLowerCase()
+  );
+  const configuredBaseIsLoopback = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i
+    .test(configuredApiBase);
+  // Same-origin deployments use the current page origin for API requests.
+  const usePageOrigin = hasApiBaseAttribute && (
+    !configuredApiBase || (configuredBaseIsLoopback && !pageIsLocal)
+  );
   const apiBase = (
-    hasApiBaseAttribute
-      ? configuredApiBase || window.location.origin
-      : "http://127.0.0.1:8000"
+    usePageOrigin
+      ? window.location.origin
+      : hasApiBaseAttribute
+        ? configuredApiBase
+        : "http://127.0.0.1:8000"
   ).replace(/\/$/, "");
   const chatUrl = apiBase + "/api/v1/chat";
 

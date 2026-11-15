@@ -1,3 +1,4 @@
+"""Tests for FastAPI startup and shutdown."""
 
 from fastapi.testclient import TestClient
 
@@ -5,16 +6,15 @@ import site_assistant.main as main
 
 
 class FakeLLMClient:
-    def __init__(self):
+    def __init__(self) -> None:
         self.closed = False
 
-    async def close(self):
+    async def close(self) -> None:
         self.closed = True
 
 
-def test_lifespan(monkeypatch):
-    """Test startup and shutdown without loading real models."""
-
+def test_lifespan_initializes_the_chat_service_and_closes_the_client(monkeypatch) -> None:
+    """Keep the lifecycle test independent of the E5 model and provider API."""
     fake_llm = FakeLLMClient()
 
     class FakeVectorStore:
@@ -22,7 +22,6 @@ def test_lifespan(monkeypatch):
         def load(cls, path):
             return object()
 
-    # Replace expensive components with lightweight test doubles.
     monkeypatch.setattr(main, "NumpyVectorStore", FakeVectorStore)
     monkeypatch.setattr(main, "E5Embedder", lambda **kwargs: object())
     monkeypatch.setattr(main, "Retriever", lambda **kwargs: object())
@@ -30,23 +29,9 @@ def test_lifespan(monkeypatch):
     monkeypatch.setattr(main, "ChatService", lambda **kwargs: object())
 
     with TestClient(main.app) as client:
-
-        # Startup should have initialized the service.
         assert main.app.state.chat_service is not None
+        assert client.get("/ready").status_code == 200
+        assert client.get("/health").status_code == 200
 
-        # Readiness should now report success.
-        response = client.get("/ready")
-        assert response.status_code == 200
-        assert response.json()["status"] == "ready"
-
-        # Health should also work.
-        response = client.get("/health")
-        assert response.status_code == 200
-
-    # Shutdown should clean up the application state.
-    
     assert main.app.state.chat_service is None
-    
-
-    # The underlying LLM client should have been closed.
     assert fake_llm.closed is True

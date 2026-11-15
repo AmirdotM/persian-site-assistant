@@ -1,13 +1,15 @@
 services:
   api:
     image: persian-site-assistant-api:portable
-    env_file:
-      - .env
     environment:
       APP_ENV: production
       DATA_DIR: /app/data
       EMBEDDING_MODEL: /app/models/multilingual-e5-small
       EMBEDDING_DEVICE: cpu
+      LLM_API_KEY: ${LLM_API_KEY:?Enter the provider API key when prompted}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_MODEL: ${LLM_MODEL:?Enter the provider model when prompted}
+      LLM_TIMEOUT_SECONDS: "120"
       CORS_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
     expose:
       - "8000"
@@ -29,5 +31,5 @@ services:
       api:
         condition: service_healthy
     ports:
-      - "${WEB_PORT:-8080}:80"
+      - "127.0.0.1:${WEB_PORT:-8080}:80"
     restart: unless-stopped

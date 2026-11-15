@@ -1,4 +1,4 @@
-"""Tests for the public API contract and operational error handling."""
+"""Tests for the public API contract, operational hardening and native website."""
 
 import httpx
 from fastapi.testclient import TestClient
@@ -16,6 +16,27 @@ def test_health_endpoint_includes_request_id() -> None:
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
     assert response.headers["x-request-id"]
+
+
+def test_native_website_redirect_and_static_assets_are_served() -> None:
+    home = client.get("/", follow_redirects=False)
+    products = client.get("/website/products.html")
+    widget = client.get("/widget/widget.js")
+
+    assert home.status_code == 307
+    assert home.headers["location"] == "/website/"
+    assert products.status_code == 200
+    assert "RNA-WEB-01" in products.text
+    assert widget.status_code == 200
+    assert "psa-chat-launcher" in widget.text
+
+
+def test_security_headers_are_present() -> None:
+    response = client.get("/health")
+
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert response.headers["referrer-policy"] == "strict-origin-when-cross-origin"
 
 
 def test_chat_endpoint_is_explicitly_unavailable_before_service_setup() -> None:

@@ -3,11 +3,13 @@
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from openai import APIError
 
 from site_assistant import __version__
@@ -20,6 +22,9 @@ from site_assistant.retrieval.retriever import Retriever
 from site_assistant.retrieval.vector_store import NumpyVectorStore
 
 logger = logging.getLogger(__name__)
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+WEBSITE_DIR = PROJECT_ROOT / "website"
+WIDGET_DIR = PROJECT_ROOT / "widget"
 
 
 @asynccontextmanager
@@ -29,6 +34,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.chat_service = None
 
     try:
+        # The index is built before packaging; startup only loads it.
+        # Keeping model preparation out of this path makes the demo restartable.
         vector_store = NumpyVectorStore.load(
             settings.data_dir / "index" / "vector_store.npz"
         )
@@ -61,12 +68,19 @@ app = FastAPI(
 
 
 @app.middleware("http")
-async def add_request_id(request: Request, call_next):
-    """Attach a server-generated ID to each request for support and log correlation."""
+async def add_request_id_and_security_headers(request: Request, call_next):
+    """Attach a request ID and conservative browser security headers."""
     request_id = uuid4().hex
     request.state.request_id = request_id
     response = await call_next(request)
     response.headers["X-Request-ID"] = request_id
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault(
+        "Permissions-Policy",
+        "camera=(), microphone=(), geolocation=()",
+    )
     return response
 
 
@@ -114,3 +128,23 @@ async def ready(request: Request) -> dict[str, str]:
             detail="Chat service is unavailable",
         )
     return {"status": "ready", "version": __version__}
+
+
+# In native mode, serve the static site and widget from this same origin as
+# /api/v1. The container deployment keeps serving these assets from Nginx.
+if WEBSITE_DIR.is_dir() and WIDGET_DIR.is_dir():
+    app.mount(
+        "/website",
+        StaticFiles(directory=WEBSITE_DIR, html=True),
+        name="website",
+    )
+    app.mount(
+        "/widget",
+        StaticFiles(directory=WIDGET_DIR),
+        name="widget",
+    )
+
+    @app.get("/", include_in_schema=False)
+    async def website_home() -> RedirectResponse:
+        """Send browsers to the Persian demo website."""
+        return RedirectResponse(url="/website/", status_code=307)
