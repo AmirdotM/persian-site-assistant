@@ -13,7 +13,6 @@ from fastapi.staticfiles import StaticFiles
 from openai import APIError
 
 from site_assistant import __version__
-from site_assistant.api.rate_limit import SlidingWindowRateLimiter
 from site_assistant.api.routes import router
 from site_assistant.config import settings
 from site_assistant.generation.client import LLMClient
@@ -35,6 +34,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.chat_service = None
 
     try:
+        # The index is built before packaging; startup only loads it.
+        # Keeping model preparation out of this path makes the demo restartable.
         vector_store = NumpyVectorStore.load(
             settings.data_dir / "index" / "vector_store.npz"
         )
@@ -63,12 +64,6 @@ app = FastAPI(
     version=__version__,
     description="Persian-first website assistant API powered by retrieval-augmented generation.",
     lifespan=lifespan,
-    docs_url=None if settings.public_demo_mode else "/docs",
-    redoc_url=None if settings.public_demo_mode else "/redoc",
-    openapi_url=None if settings.public_demo_mode else "/openapi.json",
-)
-app.state.chat_rate_limiter = SlidingWindowRateLimiter(
-    max_requests=settings.public_demo_rate_limit_per_minute
 )
 
 
