@@ -44,9 +44,11 @@ def test_portable_compose_uses_prebuilt_images_without_build_context() -> None:
 
     assert "persian-site-assistant-api:portable" in compose
     assert "persian-site-assistant-web:portable" in compose
-    assert "env_file:" in compose
+    assert "env_file:" not in compose
     assert "build:" not in compose
-    assert '${WEB_PORT:-8080}:80' in compose
+    assert '127.0.0.1:${WEB_PORT:-8080}:80' in compose
+    assert '${LLM_API_KEY:?' in compose
+    assert '${LLM_MODEL:?' in compose
 
 
 def test_portable_packager_exports_images_but_not_local_env_file() -> None:
@@ -57,8 +59,8 @@ def test_portable_packager_exports_images_but_not_local_env_file() -> None:
     assert "docker image save" in script
     assert "images.tar" in script
     assert "tar -czf" in script
-    assert 'Copy-Item ".env.example"' in script
     assert 'Copy-Item ".env"' not in script
+    assert 'Copy-Item "README_PORTABLE.md"' in script
     assert "start_portable.ps1" in script
     assert "docker compose @composeArgs up -d" in script
     assert 'healthState -eq "healthy"' in script
@@ -104,24 +106,20 @@ def test_portable_compose_supports_a_custom_frontend_port() -> None:
     assert '${WEB_PORT:-8080}:80' in compose
 
 
-def test_portable_launcher_reports_the_configured_web_port() -> None:
+def test_portable_launcher_is_one_command_and_does_not_store_the_api_key() -> None:
     script = read_project_file("scripts/start_portable.ps1")
 
-    assert 'Select-String -Path ".env" -Pattern "^\\s*WEB_PORT' in script
-    assert 'Open http://localhost:$webPort' in script
+    assert 'Read-Host "LLM API key" -AsSecureString' in script
+    assert 'Read-Host "LLM model ID' in script
+    assert 'docker info --format' in script
+    assert 'docker load --input $imageArchive' in script
+    assert 'Invoke-WebRequest -UseBasicParsing -Uri "$demoUrl/ready"' in script
+    assert 'Start-Process $demoUrl' in script
+    assert 'docker compose -p $projectName -f $composeFile down' in script
+    assert '$env:LLM_API_KEY = $null' in script
+    assert 'Set-Content' not in script
 
-def test_native_public_demo_uses_loopback_cloudflare_email_gate_and_rate_limit() -> None:
-    runner = read_project_file("scripts/run_public_demo.py")
-    main = read_project_file("src/site_assistant/main.py")
-    routes = read_project_file("src/site_assistant/api/routes.py")
+def test_widget_uses_the_current_origin_when_embedded_on_a_public_site() -> None:
     widget = read_project_file("widget/widget.js")
-
-    assert '"127.0.0.1"' in runner
-    assert '"--allowed-mail"' in runner
-    assert '"PUBLIC_DEMO_MODE": "true"' in runner
-    assert '"PUBLIC_DEMO_RATE_LIMIT_PER_MINUTE": "12"' in runner
-    assert 'docs_url=None if settings.public_demo_mode else "/docs"' in main
-    assert "settings.public_demo_mode" in routes
-    assert "status.HTTP_429_TOO_MANY_REQUESTS" in routes
     assert "configuredBaseIsLoopback && !pageIsLocal" in widget
 
