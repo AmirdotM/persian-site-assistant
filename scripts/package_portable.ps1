@@ -85,10 +85,12 @@ if ($LASTEXITCODE -ne 0) {
 # Run an isolated preflight project so packaging does not interfere with a
 # normal development Compose project. Use a dedicated port to avoid collisions.
 $previousWebPort = $env:WEB_PORT
-$previousLlmApiKey = $env:LLM_API_KEY
-$previousLlmBaseUrl = $env:LLM_BASE_URL
-$previousLlmModel = $env:LLM_MODEL
-$previousLlmTimeout = $env:LLM_TIMEOUT_SECONDS
+$previousLlmEnvironment = @{
+    "LLM_API_KEY" = $env:LLM_API_KEY
+    "LLM_BASE_URL" = $env:LLM_BASE_URL
+    "LLM_MODEL" = $env:LLM_MODEL
+    "LLM_TIMEOUT_SECONDS" = $env:LLM_TIMEOUT_SECONDS
+}
 
 $env:WEB_PORT = "18080"
 # Startup creates the LLM client but does not send a request. Use placeholders
@@ -155,13 +157,12 @@ finally {
         $env:WEB_PORT = $previousWebPort
     }
 
-    foreach ($name in @("LLM_API_KEY", "LLM_BASE_URL", "LLM_MODEL", "LLM_TIMEOUT_SECONDS")) {
-        $previousValue = (Get-Variable -Name ("previous" + ($name -replace "_", "")) -ValueOnly -ErrorAction SilentlyContinue)
-        if ($null -eq $previousValue) {
-            Remove-Item ("Env:" + $name) -ErrorAction SilentlyContinue
+    foreach ($entry in $previousLlmEnvironment.GetEnumerator()) {
+        if ($null -eq $entry.Value) {
+            Remove-Item ("Env:" + $entry.Key) -ErrorAction SilentlyContinue
         }
         else {
-            [Environment]::SetEnvironmentVariable($name, $previousValue, "Process")
+            [Environment]::SetEnvironmentVariable($entry.Key, $entry.Value, "Process")
         }
     }
 }
