@@ -93,27 +93,25 @@ The embedding model and retrieval index run locally. Only answer generation is s
 
 On the development PC:
 
-1. Check that the E5 model files exist under `models/multilingual-e5-small/`.
-2. Rebuild the index if the knowledge-base documents have changed:
-   `python scripts/build_index.py`
-3. Run the tests:
-   `python -m pytest`
-   `ruff check .`
-4. Make sure Docker Desktop is running with Linux containers enabled.
-5. Run `.\scripts\package_portable.ps1` from PowerShell.
-6. Confirm that the script finishes with the API readiness, Nginx proxy, and product-page preflight checks passing.
-7. Copy the complete `release/portable-demo/` folder to the USB drive. Keep a second copy of the folder or the `persian-site-assistant-portable.tar.gz` archive as a backup.
+1. Check that the E5 model files exist under \`models/multilingual-e5-small/\`.
+2. Run the tests:
+   \`python -m pytest\`
+   \`ruff check .\`
+3. Make sure Docker Desktop is running with Linux containers enabled.
+4. Run the combined packaging script from PowerShell:
+   \`powershell -ExecutionPolicy Bypass -File .\scripts\package_demo.ps1\`
+5. Let it finish both builds and preflight checks. The native build must be created on Windows; the Docker preflight checks API readiness, the Nginx proxy, and the product page.
+6. Copy the entire \`release/demo/\` folder to the USB drive. Keep a second copy on the development PC.
 
 On the presentation PC:
 
-- Confirm Docker Desktop is installed, running, and using Linux containers.
-- Copy `portable-demo` from the USB drive to a local folder.
-- Open PowerShell in that folder and run:
-  `powershell -ExecutionPolicy Bypass -File .\START-HERE.ps1`
+- Copy the complete \`demo\` folder from the USB drive to a local drive.
+- Double-click \`START-DEMO.bat\`.
+- Choose Native Windows mode if Docker is unavailable, or Docker mode if Docker Desktop is installed and running with Linux containers.
 - Have the LLM provider API key and exact model ID ready. The launcher asks for them; they are not stored in the USB folder.
-- Keep the PowerShell window open while presenting. Press Enter when the demo is finished.
+- Keep the launcher window open while presenting. Press Enter in that window when the demo is finished.
 
-The presentation PC does not need Python, a virtual environment, PyTorch, Sentence Transformers, the E5 model download, Ollama, or cloudflared. It does need Docker Desktop and internet access to the LLM provider.
+The native option does not require Python or Docker Desktop on the presentation PC. The Docker option requires Docker Desktop. Both options require internet access to the LLM provider; the E5 embedding model and retrieval index are local.
 
 ## Honest limitations
 
