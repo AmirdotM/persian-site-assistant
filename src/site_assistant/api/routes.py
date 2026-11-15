@@ -9,6 +9,7 @@ router = APIRouter()
 
 @router.post("/chat", response_model=ChatResponse, tags=["chat"])
 async def chat(payload: ChatRequest, request: Request) -> ChatResponse:
+    """Send a message through the shared chat service."""
     service = getattr(request.app.state, "chat_service", None)
     if service is None:
         raise HTTPException(

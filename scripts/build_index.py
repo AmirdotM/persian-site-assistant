@@ -12,9 +12,7 @@ import logging
 import sys
 from pathlib import Path
 
-# This script is executed directly, so Python otherwise adds only the
-# scripts/ directory to sys.path. Add src/ to support this repository's
-# src-layout without requiring an editable package installation.
+# Add src/ so this script can run from the repository without an editable install.
 SOURCE_ROOT = Path(__file__).resolve().parents[1] / "src"
 if str(SOURCE_ROOT) not in sys.path:
     sys.path.insert(0, str(SOURCE_ROOT))
@@ -31,9 +29,7 @@ INDEX_FILENAME = "vector_store.npz"
 
 def build_index() -> Path:
     """Create embeddings for the source chunks and persist the vector store."""
-    # 1. Load source documents and split them into TextChunk objects.
-    # build_chunks() already uses data/raw/demo_company/ and the configured
-    # chunk size/overlap, so we should not introduce a second chunks.jsonl path.
+    # Use the same document loader and chunking settings as the application.
     chunks = build_chunks()
 
     if not chunks:
@@ -42,15 +38,13 @@ def build_index() -> Path:
             "and the document loader."
         )
 
-    # 2. Embed the chunk text in exactly the same order as the chunks.
-    # E5Embedder adds the required "passage: " prefix internally.
+    # E5Embedder adds the required passage prefix; keep the source text unchanged here.
     embedder = E5Embedder(
         model_name=settings.embedding_model,
         device=settings.embedding_device,
     )
     embeddings = embedder.embed_passages([chunk.text for chunk in chunks])
 
-    # 3. Make sure every chunk has exactly one embedding row.
     if embeddings.ndim != 2:
         raise ValueError(
             f"Expected a 2-D embedding matrix, got {embeddings.ndim}-D."
@@ -62,10 +56,7 @@ def build_index() -> Path:
             f"{embeddings.shape[0]} vectors for {len(chunks)} chunks."
         )
 
-    # 4. Save both the vectors and their matching chunk metadata.
-    # NumpyVectorStore.save(".../vector_store.npz") writes:
-    #   vector_store.npz  -> NumPy embedding matrix
-    #   vector_store.json -> serialized TextChunk records + format version
+    # Keep each embedding row paired with its chunk metadata for retrieval.
     index_path = settings.data_dir / "index" / INDEX_FILENAME
     vector_store = NumpyVectorStore(vectors=embeddings, chunks=chunks)
     vector_store.save(index_path)

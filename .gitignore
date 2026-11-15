@@ -30,11 +30,6 @@ data/index/**
 *.log
 .DS_Store
 Thumbs.db
-# Generated vector index files
-index.npz
-*.npz
-metadata.json
-*.json
 
 # Generated portable release bundle
 release/

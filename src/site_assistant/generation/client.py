@@ -29,7 +29,6 @@ class LLMClient:
         )
         content = response.choices[0].message.content
         return content.strip() if content else ""
-    #closing the client cleanly
     async def close(self) -> None:
-        """Close the client cleanly."""
+        """Close the HTTP client and release its connections."""
         await self.client.close()
