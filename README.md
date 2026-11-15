@@ -1,367 +1,150 @@
 # Persian Site Assistant
 
-Persian-first website support assistant using retrieval-augmented generation (RAG).
+A Persian-first website demo with a support assistant that answers from a small, controlled knowledge base.
 
-**Status:** Working demo MVP with both a native Python public-demo launcher and a portable Docker deployment path. The offline index build, FastAPI RAG API, Persian RTL website/widget, product catalogue, health/readiness probes, and automated tests are implemented. A hosted LLM API is configured at runtime; Ollama is optional for local development.
+The website, company, products, project examples, and prices are fictional. They are there to make the demo realistic; they are not claims about real clients or commercial products.
 
-## Overview
+## What is included
 
-The repository contains a Persian RTL company website, an embeddable assistant widget, a fictional eight-product catalogue, and a FastAPI backend. The assistant retrieves relevant passages from the local knowledge base, sends that context to a local or hosted OpenAI-compatible LLM, and returns an answer with related-document cards.
+- A responsive Persian RTL company website.
+- An embeddable chat widget with suggested questions, loading states, and related-source cards.
+- Eight fictional products and four example customer scenarios.
+- A FastAPI backend with health and readiness checks.
+- A local E5 embedding model and a saved NumPy vector index.
+- An OpenAI-compatible LLM client. The LLM can be hosted; the embedding model and retrieval index run locally.
 
-The sample company, its content, and every showcased project are fictional demonstration material. The showcase examples are illustrative concepts, not claims of completed client work.
+## How the assistant works
 
-## Demo website
-
-The website has six pages:
-
-- Home: introduction and summary of the company's capabilities.
-- Services: scope and details for each service.
-- Products: eight searchable fictional software products with demo-only price ranges.
-- Solutions: four customer scenarios showing how product recommendations are made.
-- Showcase: illustrative corporate website, online store, operations dashboard, and knowledge assistant scenarios.
-- Contact and FAQ: sample contact details, working hours, and common questions.
-
-All pages load the same chat widget from `widget/widget.js`. Product and solution pages can send prefilled questions directly to the assistant. The widget displays related source-document cards; these are retrieval context, not sentence-level citations.
-
-## Architecture
+The knowledge base lives under `data/raw/demo_company/`. The index is built before the demo starts:
 
 ```text
-Knowledge preparation (run when source documents change)
-Markdown / HTML / TXT → loader → normalization → chunks
-    → E5 passage embeddings → NumPy vector store
-    → data/index/vector_store.npz + vector_store.json
-
-Application serving (run for website visitors)
-Browser widget → same-origin FastAPI static serving (native) or Nginx (Docker) → query embedding → retrieval
-    → grounded prompt → configured LLM API → answer + related documents
+Markdown / HTML / TXT
+        |
+        v
+load -> normalize Persian text -> split into chunks
+        |
+        v
+E5 passage embeddings -> NumPy vector index
+        |
+        v
+data/index/vector_store.npz + vector_store.json
 ```
 
-## Stack
+When a visitor asks a question, the API embeds the question, retrieves the closest passages, and sends those passages to the configured LLM. The widget displays the answer and a short list of related documents.
 
-- Python 3.11+, FastAPI, Uvicorn, Pydantic
-- OpenAI-compatible LLM API
-- `intfloat/multilingual-e5-small` embeddings
-- NumPy similarity search and persistence
-- Static HTML, CSS, and vanilla JavaScript
-- pytest and Ruff
+The source cards show which documents were retrieved. They are useful context, but they are not sentence-level citations.
 
-## Repository
+## Local development
 
-```text
-.
-├── data/raw/demo_company/       # Fictional company and product knowledge base
-│   ├── products/                 # Eight product sheets and selection guide
-│   └── projects/                 # Showcase scenario documents
-├── data/index/                  # Generated index (not committed)
-├── website/                     # Four-page Persian RTL company site
-│   └── assets/
-├── widget/                      # Embeddable chat widget and isolated demo
-├── docker/                      # API, Nginx and frontend Dockerfiles/config
-├── deploy/                      # Compose file for prebuilt portable images
-├── compose.yaml                 # Build and run both containers
-├── README_PORTABLE.md           # Destination-system handover guide
-├── scripts/build_index.py       # Offline index-building entry point
-├── scripts/run_public_demo.py   # Start a protected, Docker-free public demo
-├── scripts/download_embedding_model.py
-├── src/site_assistant/
-│   ├── api/
-│   ├── generation/
-│   ├── ingestion/
-│   ├── retrieval/
-│   ├── config.py
-│   ├── main.py
-│   └── schemas.py
-├── evals/
-├── tests/
-├── .github/workflows/ci.yml
-└── pyproject.toml
-```
+Use Python 3.12 for the same version used by the packaged API image.
 
-## Setup
-
-Create and activate a virtual environment:
+Create a virtual environment and install the project:
 
 ```powershell
 py -3.12 -m venv .venv
-.\\.venv\\Scripts\\Activate.ps1
+.\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
+python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+python -m pip install -e ".[dev,embeddings]"
 Copy-Item .env.example .env
 ```
 
-Install the lightweight development and vector dependencies:
+Download the E5 model using the instructions in the setup section below. The large `model.safetensors` file is downloaded separately, then `scripts/download_embedding_model.py` verifies it and fetches the remaining model files.
 
-```powershell
-python -m pip install -e ".[dev,vector]"
-```
-
-### Enable local E5 embeddings (CPU)
-
-The embedding extra installs Sentence Transformers and its model-inference dependencies. To avoid pulling a CUDA-enabled PyTorch build on a CPU-only machine, install the CPU wheel first from the official PyTorch CPU index:
-
-```powershell
-python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
-python -m pip install -e ".[embeddings]"
-```
-
-Check the installed build:
-
-```powershell
-python -c "import torch; print(torch.__version__); print(torch.cuda.is_available())"
-```
-
-For a CPU installation, `torch.cuda.is_available()` should be `False`. For NVIDIA GPU inference, use the matching command from the official [PyTorch installation selector](https://pytorch.org/get-started/locally/) instead of the CPU index.
-
-Download the large model weights manually first. Use a download manager with this direct Hugging Face link:
-
-[Download model.safetensors (471 MB)](https://huggingface.co/intfloat/multilingual-e5-small/resolve/97e13e802c05f5dbe5a86832df6d6f68b252e885/model.safetensors)
-
-Save the file as:
-
-```text
-models/multilingual-e5-small/model.safetensors
-```
-
-Then run the project downloader:
-
-```powershell
-python scripts/download_embedding_model.py
-```
-
-The script verifies the large file using its SHA-256 checksum, then downloads only the remaining configuration and tokenizer files. It will not attempt to download the model weights again. If a smaller-file download fails, run the script again after reconnecting.
-
-Set the local model path in `.env`:
-
-```ini
-EMBEDDING_MODEL=./models/multilingual-e5-small
-```
-
-The `models/` directory is ignored by Git; do not commit model weights.
-
-### Build the local index
-
-Run from the repository root after installing the embedding dependencies and downloading the model:
+Build the index after the model is ready:
 
 ```powershell
 python scripts/build_index.py
 ```
 
-This reads all supported documents recursively from `data/raw/demo_company/`, creates embeddings, then saves:
-
-- `data/index/vector_store.npz`: embedding matrix.
-- `data/index/vector_store.json`: chunk metadata and format version.
-
-Rebuild the index whenever the source knowledge-base documents change. Do not run index generation on every API startup.
-
-### Configure the LLM
-
-For local development with Ollama's OpenAI-compatible endpoint, set these values in `.env` (use the exact model tag shown by `ollama list`):
+Configure `.env` with an LLM provider:
 
 ```ini
-LLM_API_KEY=ollama
-LLM_BASE_URL=http://127.0.0.1:11434/v1
-LLM_MODEL=your-local-model-tag
+LLM_API_KEY=your-provider-key
+LLM_BASE_URL=https://api.groq.com/openai/v1
+LLM_MODEL=your-provider-model-id
 LLM_TIMEOUT_SECONDS=120
+EMBEDDING_MODEL=./models/multilingual-e5-small
+EMBEDDING_DEVICE=cpu
 ```
 
-For a hosted OpenAI-compatible provider, set its API key and model, plus its base URL when required. For example, a Groq configuration uses `LLM_BASE_URL=https://api.groq.com/openai/v1`. Use the exact model ID available to your account. Keep provider credentials in the backend environment; never place them in website or widget JavaScript. For Docker, use a hosted endpoint rather than a host-local Ollama URL.
+Use the exact model ID enabled for your provider. Leave `LLM_BASE_URL` empty when using the default OpenAI endpoint. Keep the API key in the backend environment; it must never go into website or widget JavaScript.
 
-### Run the API
-
-Start the backend from the repository root:
+Start the complete local website and API from the repository root:
 
 ```powershell
-uvicorn site_assistant.main:app --reload --app-dir src
+.\.venv\Scripts\python.exe -m uvicorn site_assistant.main:app --app-dir src --host 127.0.0.1 --port 8000
 ```
 
-API documentation: `http://127.0.0.1:8000/docs`
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000). The root address redirects to the website. The API checks are available at `/health` and `/ready`; interactive API documentation is at `/docs`.
 
-### Smoke-test the running API
-
-With your configured local or hosted LLM provider and FastAPI running, execute this in a separate terminal:
-
-```powershell
-python scripts/smoke_test_api.py
-```
-
-The script checks `/health` and `/ready`, then sends three Persian questions to `POST /api/v1/chat`: a known company question, a product-recommendation scenario, and an unsupported question. The script validates the HTTP response structure and saves the full answers as UTF-8 JSON to `data/test_output/chat_smoke_test.json`. Review the recommendation and abstention answers manually; the script validates HTTP/schema behavior but does not score semantic quality. Open the report in VS Code to inspect Persian text without relying on terminal font/encoding behavior.
-
-You can override the API URL or timeout:
-
-```powershell
-python scripts/smoke_test_api.py --base-url http://127.0.0.1:8000 --timeout 240
-# When using Docker Compose, the same API is available through Nginx:
-python scripts/smoke_test_api.py --base-url http://127.0.0.1:8080 --timeout 240
-```
-
-
-Health check: `http://127.0.0.1:8000/health`  
-Readiness check: `http://127.0.0.1:8000/ready`
-
-### Runtime behavior
-
-- `/health` reports that the API process is alive; `/ready` returns success only after the RAG chat service has initialized.
-- Every response includes an `X-Request-ID` header. Successful chat responses and upstream-provider error responses also include this ID in the JSON body.
-- LLM-provider API failures are returned as a generic `502` response. The backend logs the request ID and error type without returning provider internals to the browser.
-- The API accepts questions up to 4,000 characters and rejects empty or whitespace-only messages.
-
-### Share a protected public demo without Docker
-
-For a temporary employer preview, you can run the website, API and Cloudflare Quick Tunnel from one command. Docker is not used by this path.
-
-One-time prerequisites:
-- Install `cloudflared` on Windows and make sure `cloudflared.exe` is on `PATH`. Use the [official Cloudflare download instructions](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/).
-- Configure `.env` with `LLM_API_KEY` and `LLM_MODEL`.
-- Download the local E5 model and build `data/index/vector_store.npz` plus `vector_store.json`.
-
-From the project root, run:
-
-```powershell
-.\\.venv\\Scripts\\python.exe .\\scripts\\run_public_demo.py
-```
-
-The launcher asks for one or more allowed visitor email addresses, starts FastAPI on `127.0.0.1:8765`, waits for the RAG model to become ready, then starts a Cloudflare Quick Tunnel. It prints a temporary `trycloudflare.com` URL. Visitors must enter an allowed email address and verify the one-time PIN Cloudflare sends them.
-
-Public-demo safeguards:
-- FastAPI binds to loopback only; no inbound Windows firewall port is opened.
-- Cloudflare email verification restricts access to the public URL.
-- Chat requests are limited to 12 per visitor per rolling minute.
-- Swagger, ReDoc and the OpenAPI schema are disabled in public-demo mode.
-- Browser security headers are set, and the widget automatically uses the same-origin API.
-- The LLM provider key stays in the local `.env` file and is never sent to the browser.
-
-Keep the terminal, PC, network connection and any local LLM service running during the demo. Press `Ctrl+C` in the launcher terminal to stop both the tunnel and API. A Quick Tunnel is temporary: its hostname changes when restarted, and it is intended for testing rather than production. Do not send sensitive personal or business data through this demo.
-
-See [Cloudflare Quick Tunnels](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/) for current features and limitations.
-
-### Run both containers with Docker Compose
-
-After the embedding model is downloaded and the local vector index has been built, configure a hosted LLM provider in `.env`. Then run:
-
-```powershell
-docker compose up --build -d
-```
-
-Open `http://localhost:8080`. Nginx serves the website and proxies `/api/v1/chat`, health checks and `/docs` to FastAPI. The API image includes the E5 model, source documents and vector index. The destination system does not need Python, Sentence Transformers, PyTorch, or Ollama installed—only Docker and internet access for the LLM API.
-
-### Build a portable handover bundle
-
-On Windows with Docker Desktop using Linux containers, run:
-
-```powershell
-.\\scripts\\package_portable.ps1
-```
-
-The script checks the E5 model assets and API configuration, rebuilds the vector index from the current knowledge base, validates Compose, builds both images, starts an isolated preflight stack, verifies API readiness plus Nginx proxy and product-page delivery, then exports the images and creates:
-
-`release/persian-site-assistant-portable.tar.gz`
-
-The archive contains prebuilt API and web images plus Compose configuration and setup instructions. It includes the E5 model and vector index inside the API image. It deliberately excludes `.env` and API credentials; configure a separate key on the destination system. See `README_PORTABLE.md` for the handover steps.
-
-The Docker deployment is an employer-demo MVP and does not include application authentication or rate limiting. The native public-demo launcher adds Cloudflare email verification and an in-memory chat rate limit, but Quick Tunnels are temporary preview infrastructure, not production hosting. Do not expose either deployment as a permanent public service without a dedicated security and operations review.
-
-### Run the website
-
-From the repository root, in a second terminal:
-
-```powershell
-python -m http.server 5500
-```
-
-Open the full company website (including the new products and solutions pages):
-
-`http://127.0.0.1:5500/website/`
-
-An isolated widget-only smoke-test page is also available at:
-
-`http://127.0.0.1:5500/widget/demo.html`
-
-Uvicorn is installed without its optional `standard` extras. The current widget uses HTTP requests only and has no WebSocket endpoints, so the extra WebSocket server dependency is unnecessary.
-
-## Dependency groups
-
-| Extra | Includes | Use |
-|---|---|---|
-| `dev` | pytest, pytest-cov, Ruff | Tests and linting |
-| `vector` | NumPy | Vector search and index persistence |
-| `embeddings` | NumPy, Sentence Transformers, Hugging Face Hub | E5 model download and inference |
-
-The GitHub Actions test job installs `.[dev,vector]`. It does not install Sentence Transformers, PyTorch, CUDA libraries, or model weights. Index-builder tests use a fake embedder.
-
-## Sample questions
-
-These questions exercise the expanded fictional knowledge base. The company, examples, and policies are demonstration content only.
-
-### Company and collaboration
-- راهکار نوین آریا چه نوع مجموعه‌ای است و برای چه کسب‌وکارهایی مناسب است؟
-- برای شروع یک پروژه چه اطلاعاتی باید آماده کنم؟
-- خروجی مرحله شناخت مسئله چیست؟
-- معیار پذیرش هر قابلیت چگونه مشخص می‌شود؟
-- چه عواملی روی برآورد هزینه و زمان پروژه اثر دارند؟
-
-### Services
-- برای طراحی یک وب‌سایت شرکتی چه صفحه‌ها و قابلیت‌هایی پیشنهاد می‌شود؟
-- در یک فروشگاه اینترنتی چه امکاناتی برای مدیریت سفارش وجود دارد؟
-- آیا می‌توان داشبورد را به نرم‌افزار حسابداری متصل کرد؟
-- برای اتوماسیون یک فرایند داخلی چه چیزهایی باید بررسی شود؟
-- آیا اتصال به درگاه پرداخت و سرویس پیامک تضمین‌شده است؟
-
-### Security and operations
-- چه اقداماتی برای محافظت از اطلاعات کاربران باید در نظر گرفته شود؟
-- آیا شرکت گواهی امنیتی یا استاندارد مشخصی دارد؟
-- پس از تحویل پروژه چه مستنداتی ارائه می‌شود؟
-- پشتیبانی و نگهداری شامل چه مواردی است؟
-
-### Knowledge assistant
-- دستیار دانش این دمو از چه اجزایی تشکیل شده است؟
-- وقتی سند جدیدی اضافه می‌شود، چطور وارد جست‌وجو می‌شود؟
-- چرا ممکن است دستیار پاسخ یک پرسش را نداند؟
-- آیا گفت‌وگوها در پایگاه داده ذخیره می‌شوند؟
-
-### Product recommendation and comparison
-- برای فروشگاه اینترنتی با حدود ۱۵۰ محصول و بودجه ۵۰ تا ۶۵ میلیون تومان چه محصولی مناسب است؟
-- فروشگاه فعلی داریم و فقط مدیریت موجودی و ورود و خروج کالا لازم داریم؛ چه پیشنهادی دارید؟
-- تفاوت پیگیر و جریان‌کار چیست؟
-- برای پاسخ‌گویی از روی صدها فایل PDF چه محصولی مناسب است؟
-- برای آموزشگاهی با چند مدرس و رزرو نوبت چه راهکاری پیشنهاد می‌کنید؟
-- هشت محصول نمایشی را بر اساس کاربرد و بازه قیمت مقایسه کن.
-
-### Questions that should not produce invented facts
-- نام مدیرعامل شرکت چیست؟
-- شماره تلفن و نشانی دفتر کجاست؟
-- قیمت دقیق طراحی یک فروشگاه اینترنتی چقدر است؟
-- کدام شرکت‌ها مشتری واقعی راهکار نوین آریا هستند؟
-- شماره حساب بانکی مدیرعامل چیست؟
-- آیا شرکت تعمیر لپ‌تاپ انجام می‌دهد؟
-
-
-## Configuration
-
-| Variable | Description |
-|---|---|
-| `APP_ENV` | Environment label, such as `development` or `production` |
-| `CORS_ORIGINS` | Comma-separated allowed website origins; use exact origins when hosted |
-| `LLM_API_KEY` | Provider API key |
-| `LLM_BASE_URL` | OpenAI-compatible API base URL |
-| `LLM_MODEL` | Provider model identifier |
-| `LLM_TIMEOUT_SECONDS` | Timeout for a provider generation request |
-| `EMBEDDING_MODEL` | Embedding model or local model directory |
-| `EMBEDDING_DEVICE` | Embedding device (`cpu` by default) |
-| `RETRIEVAL_TOP_K` | Number of retrieved passages |
-| `RETRIEVAL_MIN_SCORE` | Minimum retrieval score |
-| `CHUNK_SIZE_CHARS` | Maximum chunk length |
-| `CHUNK_OVERLAP_CHARS` | Chunk overlap |
-
-Keep credentials in `.env` or the hosting provider's secret store. Do not commit secrets, private source documents, model files, or generated indexes.
-
-## Presentation walkthrough
-
-See [DEMO_RUNBOOK.md](DEMO_RUNBOOK.md) for a short presentation flow, product recommendation questions, expected product matches, and the technical explanation of the RAG pipeline.
-
-## Development checks
+Run the automated checks with:
 
 ```powershell
 python -m pytest
 ruff check .
 ```
 
-The current CI job tests API route behavior, document chunking and normalization, vector-store persistence, and the model-free index-building orchestration.
+## Prepare the USB demo
+
+The portable handover is a pair of prebuilt Docker images. The API image already contains Python, the application dependencies, the E5 model, the knowledge-base documents, and the vector index. The web image contains the website, widget, and Nginx.
+
+On the development PC, make sure the local E5 model, generated index, and hosted LLM settings are ready in `.env`. Then run:
+
+```powershell
+.\scripts\package_portable.ps1
+```
+
+The packaging script rebuilds the index, builds both images, starts them in a separate preflight project, checks API readiness and website delivery, and exports the bundle to:
+
+`release/persian-site-assistant-portable.tar.gz`
+
+It also creates the extracted folder at `release/portable-demo/`. Copy that folder to the USB drive. On the presentation PC, copy it to a local folder before running it.
+
+The presentation PC needs:
+
+- Windows 10/11 x64.
+- Docker Desktop running with Linux containers enabled.
+- Internet access to the configured LLM provider.
+
+It does **not** need Python, pip, a virtual environment, PyTorch, Sentence Transformers, the E5 model download, an index build, Ollama, or cloudflared.
+
+Open PowerShell in the copied folder and run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\START-HERE.ps1
+```
+
+The launcher asks for the LLM API key, model ID, optional provider base URL, and local web port. The API key is entered through a secure prompt and is not written into a file on the USB drive. The launcher loads the images, starts the containers, waits for `/ready`, opens the site, and stops the containers when you press Enter or Ctrl+C.
+
+The site is bound to `127.0.0.1`; it is intended for a local presentation, not public hosting. More detail is in [README_PORTABLE.md](README_PORTABLE.md).
+
+## Demo notes
+
+A short presentation flow and suggested Persian questions are in [DEMO_RUNBOOK.md](DEMO_RUNBOOK.md).
+
+A few points worth being clear about during the presentation:
+
+- The company, product catalogue, scenarios, and prices are fictional sample data.
+- The assistant recommends products based on the retrieved documents; it does not check live inventory or place orders.
+- The source cards show related retrieved documents, not sentence-level citations.
+- There is no user account system or conversation database in this demo.
+
+## Configuration
+
+The main settings are read from environment variables or `.env`:
+
+| Setting | Purpose |
+|---|---|
+| `LLM_API_KEY` | Provider API key |
+| `LLM_BASE_URL` | Optional OpenAI-compatible API base URL |
+| `LLM_MODEL` | Provider model ID |
+| `LLM_TIMEOUT_SECONDS` | Upstream request timeout |
+| `EMBEDDING_MODEL` | E5 model ID or local directory |
+| `EMBEDDING_DEVICE` | Embedding device; `cpu` is the default |
+| `RETRIEVAL_TOP_K` | Number of passages to retrieve |
+| `RETRIEVAL_MIN_SCORE` | Minimum similarity score for a passage |
+| `CHUNK_SIZE_CHARS` | Maximum chunk length |
+| `CHUNK_OVERLAP_CHARS` | Overlap between neighbouring chunks |
+
+Do not commit `.env`, model weights, generated indexes, or private documents.
