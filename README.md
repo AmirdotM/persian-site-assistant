@@ -49,7 +49,7 @@ python -m pip install -e ".[dev,embeddings]"
 Copy-Item .env.example .env
 ```
 
-Download the E5 model using the instructions in the setup section below. The large `model.safetensors` file is downloaded separately, then `scripts/download_embedding_model.py` verifies it and fetches the remaining model files.
+Download the 471 MB [E5 model weights](https://huggingface.co/intfloat/multilingual-e5-small/resolve/97e13e802c05f5dbe5a86832df6d6f68b252e885/model.safetensors) and save them as `models/multilingual-e5-small/model.safetensors`. Then run `python scripts/download_embedding_model.py`; it verifies the weights and downloads the remaining configuration and tokenizer files.
 
 Build the index after the model is ready:
 
@@ -89,7 +89,7 @@ ruff check .
 
 The portable handover is a pair of prebuilt Docker images. The API image already contains Python, the application dependencies, the E5 model, the knowledge-base documents, and the vector index. The web image contains the website, widget, and Nginx.
 
-On the development PC, make sure the local E5 model, generated index, and hosted LLM settings are ready in `.env`. Then run:
+On the development PC, make sure the local E5 model and generated index are ready. The packaging preflight uses temporary placeholder LLM settings and does not make a provider request, so you do not need to put an API key in the build environment. Then run:
 
 ```powershell
 .\scripts\package_portable.ps1
