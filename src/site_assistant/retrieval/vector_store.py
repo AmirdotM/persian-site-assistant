@@ -148,11 +148,7 @@ class NumpyVectorStore:
 
             vectors = loaded["embeddings"]
 
-        # TODO: Add round-trip tests before using persisted indexes in the API:
-        # - all TextChunk fields and vector values survive save/load;
-        # - search results and similarity scores match before and after reload;
-        # - missing/corrupt files and vector/chunk mismatches fail clearly.
-
+        # The index contains numeric arrays only; never allow NumPy to load pickled objects.
         store = cls(vectors=vectors, chunks=chunks)
 
         logger.info(
