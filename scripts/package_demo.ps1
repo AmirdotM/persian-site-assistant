@@ -59,12 +59,12 @@ Copy-Item -LiteralPath (Join-Path $repoRoot "README_PORTABLE.md") -Destination (
 if (-not $dockerBuilt) {
     $readmePath = Join-Path $demoBundle "README.md"
     $readme = [System.IO.File]::ReadAllText($readmePath)
-    $readme += @"
+    $readme += @'
 
 ## وضعیت این بسته
 
 در زمان ساخت، بسته Docker آماده نشد؛ بنابراین این نسخه فقط شامل اجرای Native ویندوز است. گزینه Docker در منوی شروع در دسترس نخواهد بود. فایل اجرایی و وابستگی‌ها در پوشه \`native\` قرار دارند.
-"@
+'@
     [System.IO.File]::WriteAllText(
         $readmePath,
         $readme,
