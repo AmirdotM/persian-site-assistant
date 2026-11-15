@@ -26,6 +26,8 @@ def main() -> None:
         str(root / "models" / "multilingual-e5-small"),
     )
     os.environ.setdefault("EMBEDDING_DEVICE", "cpu")
+    os.environ.setdefault("HF_HUB_OFFLINE", "1")
+    os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
     os.environ.setdefault("LLM_TIMEOUT_SECONDS", "120")
 
     port = int(os.environ.get("APP_PORT", "8000"))
