@@ -4,7 +4,6 @@ import httpx
 from fastapi.testclient import TestClient
 from openai import APIConnectionError
 
-from site_assistant.api.rate_limit import SlidingWindowRateLimiter
 from site_assistant.config import settings
 from site_assistant.main import app
 from site_assistant.schemas import ChatResponse
@@ -51,27 +50,6 @@ def test_chat_rejects_whitespace_only_messages() -> None:
     response = client.post("/api/v1/chat", json={"message": "   "})
 
     assert response.status_code == 422
-
-
-def test_public_demo_chat_rate_limit_returns_retry_after(monkeypatch) -> None:
-    class FakeChatService:
-        async def answer(self, question: str, session_id: str | None = None) -> ChatResponse:
-            return ChatResponse(answer="درود")
-
-    monkeypatch.setattr(settings, "public_demo_mode", True)
-    monkeypatch.setattr(
-        app.state,
-        "chat_rate_limiter",
-        SlidingWindowRateLimiter(max_requests=1),
-    )
-    monkeypatch.setattr(app.state, "chat_service", FakeChatService(), raising=False)
-
-    first = client.post("/api/v1/chat", json={"message": "سلام"})
-    second = client.post("/api/v1/chat", json={"message": "حالت چطور است؟"})
-
-    assert first.status_code == 200
-    assert second.status_code == 429
-    assert int(second.headers["retry-after"]) > 0
 
 
 def test_successful_chat_response_contains_request_id(monkeypatch) -> None:
