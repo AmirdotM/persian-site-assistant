@@ -100,7 +100,7 @@ On the development PC:
    `python -m pytest`
    `ruff check .`
 4. Make sure Docker Desktop is running with Linux containers enabled.
-5. Run `.scripts\package_portable.ps1` from PowerShell.
+5. Run `.\scripts\package_portable.ps1` from PowerShell.
 6. Confirm that the script finishes with the API readiness, Nginx proxy, and product-page preflight checks passing.
 7. Copy the complete `release/portable-demo/` folder to the USB drive. Keep a second copy of the folder or the `persian-site-assistant-portable.tar.gz` archive as a backup.
 
