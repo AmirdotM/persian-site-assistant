@@ -8,7 +8,7 @@ from site_assistant.config import settings
 class LLMClient:
     def __init__(self) -> None:
         if not settings.llm_api_key or not settings.llm_model:
-            raise RuntimeError("Set LLM_API_KEY and LLM_MODEL in .env before generating answers")
+            raise RuntimeError("Set LLM_API_KEY and LLM_MODEL in the environment before generating answers")
         kwargs: dict[str, object] = {
             "api_key": settings.llm_api_key,
             "timeout": settings.llm_timeout_seconds,
