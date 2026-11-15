@@ -93,20 +93,20 @@ The embedding model and retrieval index run locally. Only answer generation is s
 
 On the development PC:
 
-1. Check that the E5 model files exist under \`models/multilingual-e5-small/\`.
+1. Check that the E5 model files exist under `models/multilingual-e5-small/`.
 2. Run the tests:
-   \`python -m pytest\`
-   \`ruff check .\`
+   `python -m pytest`
+   `ruff check .`
 3. Make sure Docker Desktop is running with Linux containers enabled.
 4. Run the combined packaging script from PowerShell:
-   \`powershell -ExecutionPolicy Bypass -File .\scripts\package_demo.ps1\`
+   `powershell -ExecutionPolicy Bypass -File .\scripts\package_demo.ps1`
 5. Let it finish both builds and preflight checks. The native build must be created on Windows; the Docker preflight checks API readiness, the Nginx proxy, and the product page.
-6. Copy the entire \`release/demo/\` folder to the USB drive. Keep a second copy on the development PC.
+6. Copy the entire `release/demo/` folder to the USB drive. Keep a second copy on the development PC.
 
 On the presentation PC:
 
-- Copy the complete \`demo\` folder from the USB drive to a local drive.
-- Double-click \`START-DEMO.bat\`.
+- Copy the complete `demo` folder from the USB drive to a local drive.
+- Double-click `START-DEMO.bat`.
 - Choose Native Windows mode if Docker is unavailable, or Docker mode if Docker Desktop is installed and running with Linux containers.
 - Have the LLM provider API key and exact model ID ready. The launcher asks for them; they are not stored in the USB folder.
 - Keep the launcher window open while presenting. Press Enter in that window when the demo is finished.
