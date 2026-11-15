@@ -63,6 +63,8 @@ def test_portable_packager_exports_images_but_not_local_env_file() -> None:
     assert 'Copy-Item "README_PORTABLE.md"' in script
     assert "start_portable.ps1" in script
     assert "docker compose @composeArgs up -d" in script
+    assert '$env:LLM_API_KEY = "portable-preflight-placeholder"' in script
+    assert "no provider key is needed" in script
     assert 'healthState -eq "healthy"' in script
     assert "wget -qO- http://127.0.0.1/ready" in script
 
@@ -101,9 +103,15 @@ def test_portable_smoke_check_matches_the_complete_html_string() -> None:
     assert '$productPage -notmatch "RNA-WEB-01"' not in script
 
 
-def test_portable_compose_supports_a_custom_frontend_port() -> None:
+def test_portable_compose_supports_a_custom_local_only_frontend_port() -> None:
     compose = read_project_file("deploy/compose.portable.yaml")
-    assert '${WEB_PORT:-8080}:80' in compose
+    assert '127.0.0.1:${WEB_PORT:-8080}:80' in compose
+    assert '${LLM_API_KEY:?' in compose
+    assert '${LLM_MODEL:?' in compose
+
+    development_compose = read_project_file("compose.yaml")
+    assert 'LLM_API_KEY: ${LLM_API_KEY:-local-demo-placeholder}' in development_compose
+    assert 'LLM_MODEL: ${LLM_MODEL:-local-demo-placeholder}' in development_compose
 
 
 def test_portable_launcher_is_one_command_and_does_not_store_the_api_key() -> None:
@@ -119,7 +127,7 @@ def test_portable_launcher_is_one_command_and_does_not_store_the_api_key() -> No
     assert '$env:LLM_API_KEY = $null' in script
     assert 'Set-Content' not in script
 
-def test_widget_uses_the_current_origin_when_embedded_on_a_public_site() -> None:
+def test_widget_uses_the_current_origin_for_same_origin_deployments() -> None:
     widget = read_project_file("widget/widget.js")
     assert "configuredBaseIsLoopback && !pageIsLocal" in widget
 
