@@ -20,8 +20,6 @@ class Settings(BaseSettings):
     app_env: str = "development"
     api_prefix: str = "/api/v1"
     cors_origins: str = "http://127.0.0.1:5500,http://localhost:5500"
-    public_demo_mode: bool = False
-    public_demo_rate_limit_per_minute: int = 12
 
     llm_api_key: str | None = None
     llm_base_url: str | None = None
