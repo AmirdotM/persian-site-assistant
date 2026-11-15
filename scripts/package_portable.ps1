@@ -3,6 +3,18 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $repoRoot
 
+$venvPython = Join-Path $repoRoot ".venv\Scripts\python.exe"
+if (Test-Path -LiteralPath $venvPython -PathType Leaf) {
+    $pythonExecutable = $venvPython
+}
+else {
+    $pythonCommand = Get-Command python -ErrorAction SilentlyContinue
+    if (-not $pythonCommand) {
+        throw "Python was not found. Activate the project virtual environment or install Python 3.12."
+    }
+    $pythonExecutable = $pythonCommand.Source
+}
+
 $modelDir = Join-Path $repoRoot "models\multilingual-e5-small"
 $indexVectors = Join-Path $repoRoot "data\index\vector_store.npz"
 $indexMetadata = Join-Path $repoRoot "data\index\vector_store.json"
@@ -50,7 +62,7 @@ $previousEmbeddingDevice = $env:EMBEDDING_DEVICE
 try {
     $env:EMBEDDING_MODEL = "./models/multilingual-e5-small"
     $env:EMBEDDING_DEVICE = "cpu"
-    python "scripts/build_index.py"
+    & $pythonExecutable "scripts/build_index.py"
     if ($LASTEXITCODE -ne 0) {
         throw "Index build failed. Fix the error before packaging."
     }
@@ -149,7 +161,16 @@ try {
     Write-Host "Preflight passed: API ready, Nginx proxy ready, and product catalogue served."
 }
 finally {
-    docker compose @composeArgs down
+    try {
+        docker compose @composeArgs down
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "The preflight containers may still be running. Check 'docker compose -p psa-package-check ps'."
+        }
+    }
+    catch {
+        Write-Warning "Could not stop the preflight containers automatically: $($_.Exception.Message)"
+    }
+
     if ($null -eq $previousWebPort) {
         Remove-Item Env:WEB_PORT -ErrorAction SilentlyContinue
     }
