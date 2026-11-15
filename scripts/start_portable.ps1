@@ -7,6 +7,12 @@ $projectName = "persian-site-assistant-demo"
 $composeStarted = $false
 $apiKey = $null
 
+$environmentNames = @("LLM_API_KEY", "LLM_MODEL", "LLM_BASE_URL", "WEB_PORT")
+$previousEnvironment = @{}
+foreach ($name in $environmentNames) {
+    $previousEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, "Process")
+}
+
 function Read-LocalPort {
     while ($true) {
         $answer = Read-Host "Local web port [8080]"
@@ -20,16 +26,23 @@ function Read-LocalPort {
             continue
         }
 
-        $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $port)
+        $listener = [System.Net.Sockets.TcpListener]::new(
+            [System.Net.IPAddress]::Loopback,
+            $port
+        )
+        $started = $false
         try {
             $listener.Start()
+            $started = $true
             return $port
         }
         catch {
             Write-Host "Port $port is already in use. Choose another one."
         }
         finally {
-            $listener.Stop()
+            if ($started) {
+                $listener.Stop()
+            }
         }
     }
 }
@@ -76,6 +89,7 @@ try {
 
     $secureKey = Read-Host "LLM API key" -AsSecureString
     $apiKey = ConvertFrom-SecureInput $secureKey
+    $secureKey = $null
     if ([string]::IsNullOrWhiteSpace($apiKey)) {
         throw "An LLM API key is required."
     }
@@ -100,7 +114,7 @@ try {
     $composeStarted = $true
     docker compose -p $projectName -f $composeFile up -d
     if ($LASTEXITCODE -ne 0) {
-        throw "The application containers could not be started. The logs will be shown below."
+        throw "The application containers could not be started."
     }
 
     $demoUrl = "http://127.0.0.1:$env:WEB_PORT"
@@ -129,7 +143,7 @@ try {
     Write-Host ""
     Write-Host "The demo is ready: $demoUrl"
     Write-Host "The browser will open now. Keep this window open during the presentation."
-    Write-Host "Press Enter (or Ctrl+C) here when you want to stop the demo."
+    Write-Host "Press Enter here when you want to stop the demo."
     Start-Process $demoUrl
     [void](Read-Host "Press Enter to stop")
 
@@ -140,18 +154,33 @@ catch {
     if ($composeStarted) {
         docker compose -p $projectName -f $composeFile logs --tail=100 api
     }
-    throw $_
+    throw
 }
 finally {
     if ($composeStarted) {
         Write-Host ""
         Write-Host "Stopping the demo containers..."
-        docker compose -p $projectName -f $composeFile down
+        try {
+            docker compose -p $projectName -f $composeFile down
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warning "Docker did not report a clean shutdown. Check 'docker compose ps'."
+            }
+        }
+        catch {
+            Write-Warning "Could not stop the demo containers automatically: $($_.Exception.Message)"
+        }
     }
 
-    $env:LLM_API_KEY = $null
-    $env:LLM_MODEL = $null
-    $env:LLM_BASE_URL = $null
-    $env:WEB_PORT = $null
+    foreach ($name in $environmentNames) {
+        $previousValue = $previousEnvironment[$name]
+        if ($null -eq $previousValue) {
+            Remove-Item "Env:$name" -ErrorAction SilentlyContinue
+        }
+        else {
+            [Environment]::SetEnvironmentVariable($name, $previousValue, "Process")
+        }
+    }
+
     $apiKey = $null
+    $secureKey = $null
 }
