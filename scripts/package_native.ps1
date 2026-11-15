@@ -200,10 +200,9 @@ Get-ChildItem -LiteralPath $builtApplication -Force |
 
 Write-Host "Copying the local model, index, knowledge base, website and widget..."
 New-Item -ItemType Directory -Path (Join-Path $nativeBundle "data\raw"), (Join-Path $nativeBundle "data\index") -Force | Out-Null
-New-Item -ItemType Directory -Path (Join-Path $nativeBundle "data\raw"), (Join-Path $nativeBundle "data\index") -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $repoRoot "models") -Destination $nativeBundle -Recurse -Force
-Copy-Item -LiteralPath (Join-Path $dataDir "raw") -Destination (Join-Path $nativeBundle "data\raw") -Recurse -Force
-Copy-Item -LiteralPath $indexDirectory -Destination (Join-Path $nativeBundle "data\index") -Recurse -Force
+Get-ChildItem -LiteralPath (Join-Path $dataDir "raw") -Force | Copy-Item -Destination (Join-Path $nativeBundle "data\raw") -Recurse -Force
+Get-ChildItem -LiteralPath $indexDirectory -Force | Copy-Item -Destination (Join-Path $nativeBundle "data\index") -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot "website") -Destination $nativeBundle -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot "widget") -Destination $nativeBundle -Recurse -Force
 
