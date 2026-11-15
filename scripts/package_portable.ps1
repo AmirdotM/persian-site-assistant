@@ -34,19 +34,6 @@ foreach ($requiredFile in @($indexVectors, $indexMetadata)) {
 
 if (-not (Test-Path ".env" -PathType Leaf)) {
     Copy-Item ".env.example" ".env"
-    throw "Created .env from .env.example. Configure LLM_API_KEY and LLM_MODEL, then run packaging again."
-}
-
-foreach ($name in @("LLM_API_KEY", "LLM_MODEL")) {
-    $line = Select-String -Path ".env" -Pattern ("^\s*" + $name + "\s*=\s*.+$")
-    if (-not $line) {
-        throw "Configure $name in .env before building and testing the portable package."
-    }
-}
-
-$baseUrlLine = Select-String -Path ".env" -Pattern "^\s*LLM_BASE_URL\s*=\s*.+$"
-if ($baseUrlLine -and $baseUrlLine.Line -match "localhost|127\.0\.0\.1") {
-    throw "The portable API runs inside a container and cannot use Ollama at localhost. Set LLM_BASE_URL to your hosted provider endpoint."
 }
 
 $dockerOs = docker info --format '{{.OSType}}'
@@ -98,7 +85,19 @@ if ($LASTEXITCODE -ne 0) {
 # Run an isolated preflight project so packaging does not interfere with a
 # normal development Compose project. Use a dedicated port to avoid collisions.
 $previousWebPort = $env:WEB_PORT
+$previousLlmApiKey = $env:LLM_API_KEY
+$previousLlmBaseUrl = $env:LLM_BASE_URL
+$previousLlmModel = $env:LLM_MODEL
+$previousLlmTimeout = $env:LLM_TIMEOUT_SECONDS
+
 $env:WEB_PORT = "18080"
+# Startup creates the LLM client but does not send a request. Use placeholders
+# for this preflight so no provider key is needed to build or export the bundle.
+$env:LLM_API_KEY = "portable-preflight-placeholder"
+$env:LLM_BASE_URL = ""
+$env:LLM_MODEL = "portable-preflight-placeholder"
+$env:LLM_TIMEOUT_SECONDS = "120"
+
 $composeArgs = @("-p", "psa-package-check", "-f", "compose.yaml")
 try {
     Write-Host "Starting the built images for an isolated readiness and frontend check..."
@@ -154,6 +153,16 @@ finally {
     }
     else {
         $env:WEB_PORT = $previousWebPort
+    }
+
+    foreach ($name in @("LLM_API_KEY", "LLM_BASE_URL", "LLM_MODEL", "LLM_TIMEOUT_SECONDS")) {
+        $previousValue = (Get-Variable -Name ("previous" + ($name -replace "_", "")) -ValueOnly -ErrorAction SilentlyContinue)
+        if ($null -eq $previousValue) {
+            Remove-Item ("Env:" + $name) -ErrorAction SilentlyContinue
+        }
+        else {
+            [Environment]::SetEnvironmentVariable($name, $previousValue, "Process")
+        }
     }
 }
 
