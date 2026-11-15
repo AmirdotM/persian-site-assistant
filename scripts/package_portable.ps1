@@ -44,6 +44,11 @@ foreach ($name in @("LLM_API_KEY", "LLM_MODEL")) {
     }
 }
 
+$baseUrlLine = Select-String -Path ".env" -Pattern "^\s*LLM_BASE_URL\s*=\s*.+$"
+if ($baseUrlLine -and $baseUrlLine.Line -match "localhost|127\.0\.0\.1") {
+    throw "The portable API runs inside a container and cannot use Ollama at localhost. Set LLM_BASE_URL to your hosted provider endpoint."
+}
+
 $dockerOs = docker info --format '{{.OSType}}'
 if ($LASTEXITCODE -ne 0) {
     throw "Docker is not running. Start Docker Desktop and try again."
@@ -168,7 +173,6 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Copy-Item "deploy\compose.portable.yaml" (Join-Path $bundleDir "compose.yaml")
-Copy-Item ".env.example" (Join-Path $bundleDir ".env.example")
 Copy-Item "README_PORTABLE.md" (Join-Path $bundleDir "README.md")
 Copy-Item "scripts\start_portable.ps1" (Join-Path $bundleDir "START-HERE.ps1")
 
@@ -187,4 +191,4 @@ Write-Host ""
 Write-Host "Portable package created:"
 Write-Host $archivePath
 Write-Host "The archive contains prebuilt API and web images, the local E5 model, the knowledge base, and the vector index."
-Write-Host "It does not contain your .env or API key. Configure a separate .env on the destination system."
+Write-Host "It does not contain your .env or API key. START-HERE.ps1 asks for the provider settings when the demo starts."
