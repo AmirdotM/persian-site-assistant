@@ -140,7 +140,7 @@ catch {
     if ($composeStarted) {
         docker compose -p $projectName -f $composeFile logs --tail=100 api
     }
-    exit 1
+    throw $_
 }
 finally {
     if ($composeStarted) {
