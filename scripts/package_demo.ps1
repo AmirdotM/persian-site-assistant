@@ -11,7 +11,7 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host ""
 Write-Host "Building the Docker package..."
-& (Join-Path $PSScriptRoot "package_portable.ps1")
+& (Join-Path $PSScriptRoot "package_portable.ps1") -SkipIndexBuild
 if ($LASTEXITCODE -ne 0) {
     throw "Docker packaging failed."
 }
