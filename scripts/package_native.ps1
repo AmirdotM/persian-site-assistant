@@ -67,7 +67,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "Could not install CPU-only PyTorch."
 }
 
-& $pythonExecutable -m pip install -e ".[embeddings]" "pyinstaller>=6.11"
+& $pythonExecutable -m pip install -e ".[embeddings]" sentencepiece "pyinstaller>=6.11"
 if ($LASTEXITCODE -ne 0) {
     throw "Could not install the application or PyInstaller dependencies."
 }
@@ -144,6 +144,7 @@ $packagesToCollect = @(
     "huggingface_hub",
     "tokenizers",
     "safetensors",
+    "sentencepiece",
     "numpy",
     "scipy",
     "sklearn",
@@ -160,6 +161,7 @@ $metadataPackages = @(
     "huggingface-hub",
     "tokenizers",
     "safetensors",
+    "sentencepiece",
     "numpy",
     "scipy",
     "scikit-learn"
@@ -198,11 +200,21 @@ Get-ChildItem -LiteralPath $builtApplication -Force |
 
 Write-Host "Copying the local model, index, knowledge base, website and widget..."
 New-Item -ItemType Directory -Path (Join-Path $nativeBundle "data\raw"), (Join-Path $nativeBundle "data\index") -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $nativeBundle "data\raw"), (Join-Path $nativeBundle "data\index") -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $repoRoot "models") -Destination $nativeBundle -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $dataDir "raw") -Destination (Join-Path $nativeBundle "data\raw") -Recurse -Force
 Copy-Item -LiteralPath $indexDirectory -Destination (Join-Path $nativeBundle "data\index") -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot "website") -Destination $nativeBundle -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot "widget") -Destination $nativeBundle -Recurse -Force
+
+# Use the current origin for API requests, including when a non-default port is selected.
+$htmlEncoding = [System.Text.UTF8Encoding]::new($false)
+Get-ChildItem -LiteralPath (Join-Path $nativeBundle "website") -Filter "*.html" -Recurse -File |
+    ForEach-Object {
+        $html = [System.IO.File]::ReadAllText($_.FullName)
+        $html = $html.Replace('data-api-url="http://127.0.0.1:8000"', 'data-api-url=""')
+        [System.IO.File]::WriteAllText($_.FullName, $html, $htmlEncoding)
+    }
 
 Write-Host ""
 Write-Host "Native Windows package created:"
