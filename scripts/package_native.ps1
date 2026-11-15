@@ -3,25 +3,46 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $repoRoot
 
+$pythonLauncher = Get-Command py -ErrorAction SilentlyContinue
+if (-not $pythonLauncher) {
+    throw "The Python launcher was not found. Install Python 3.13, 3.14 or 3.12 and enable the 'py' launcher."
+}
+
+$selectedPythonVersion = $null
+foreach ($candidateVersion in @("3.13", "3.14", "3.12")) {
+    $probe = & $pythonLauncher.Source "-$candidateVersion" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>$null
+    if ($LASTEXITCODE -eq 0 -and $probe.Trim() -eq $candidateVersion) {
+        $selectedPythonVersion = $candidateVersion
+        break
+    }
+}
+
+if (-not $selectedPythonVersion) {
+    throw "Python 3.13, 3.14 or 3.12 was not found. Install one of these 64-bit versions and try again."
+}
+
 $packageVenv = Join-Path $repoRoot ".venv-portable"
 $pythonExecutable = Join-Path $packageVenv "Scripts\python.exe"
 
-if (-not (Test-Path -LiteralPath $pythonExecutable -PathType Leaf)) {
-    $pythonLauncher = Get-Command py -ErrorAction SilentlyContinue
-    if (-not $pythonLauncher) {
-        throw "The Python launcher was not found. Install Python 3.12 and enable the 'py' launcher."
+if (Test-Path -LiteralPath $pythonExecutable -PathType Leaf) {
+    $existingVersion = & $pythonExecutable -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
+    if ($LASTEXITCODE -ne 0 -or $existingVersion.Trim() -ne $selectedPythonVersion) {
+        Write-Host "Recreating the isolated packaging environment with Python $selectedPythonVersion..."
+        Remove-Item -LiteralPath $packageVenv -Recurse -Force
     }
+}
 
-    Write-Host "Creating an isolated Python 3.12 packaging environment..."
-    & $pythonLauncher.Source -3.12 -m venv $packageVenv
+if (-not (Test-Path -LiteralPath $pythonExecutable -PathType Leaf)) {
+    Write-Host "Creating an isolated Python $selectedPythonVersion packaging environment..."
+    & $pythonLauncher.Source "-$selectedPythonVersion" -m venv $packageVenv
     if ($LASTEXITCODE -ne 0) {
-        throw "Could not create the packaging environment. Confirm that Python 3.12 is installed."
+        throw "Could not create the packaging environment with Python $selectedPythonVersion."
     }
 }
 
 $pythonVersion = & $pythonExecutable -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
-if ($LASTEXITCODE -ne 0 -or $pythonVersion.Trim() -ne "3.12") {
-    throw "The packaging environment must use Python 3.12. Remove .venv-portable and run this script again."
+if ($LASTEXITCODE -ne 0 -or $pythonVersion.Trim() -ne $selectedPythonVersion) {
+    throw "The packaging environment was not created with Python $selectedPythonVersion."
 }
 
 $modelDir = Join-Path $repoRoot "models\multilingual-e5-small"
