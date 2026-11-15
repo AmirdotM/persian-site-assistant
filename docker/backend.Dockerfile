@@ -3,6 +3,9 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
+    PIP_INDEX_URL=https://pypi.org/simple \
+    PIP_DEFAULT_TIMEOUT=120 \
+    PIP_RETRIES=20 \
     HF_HUB_OFFLINE=1 \
     TRANSFORMERS_OFFLINE=1
 
@@ -15,7 +18,7 @@ RUN python -m pip install --upgrade pip \
 COPY pyproject.toml README.md ./
 COPY src ./src
 
-RUN python -m pip install ".[embeddings]"
+RUN python -m pip install --index-url https://pypi.org/simple --retries 20 --timeout 120 ".[embeddings]"
 
 # Ship the complete fictional knowledge base, generated index and local E5 model in the image.
 COPY data/raw ./data/raw
