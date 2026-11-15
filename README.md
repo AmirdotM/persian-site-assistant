@@ -92,7 +92,7 @@ The final hand-off includes two ways to run the same demo:
 - **Native Windows:** a one-folder executable containing Python and the application dependencies. No Python installation or Docker is needed on the presentation PC.
 - **Docker:** the prebuilt API and website images. Docker Desktop is required on the presentation PC.
 
-Build both versions from a Windows development PC with Python 3.12, the local E5 model and index, and Docker Desktop running with Linux containers enabled:
+Build both versions from a Windows development PC with Python 3.13, 3.14 or 3.12 (the packaging script selects the first installed version), the local E5 model and index, and Docker Desktop running with Linux containers enabled:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\package_demo.ps1
